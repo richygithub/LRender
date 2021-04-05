@@ -1,9 +1,13 @@
 #include "ui.h"
 #include "imgui.h"
+//#include "imgui_filebrowser.h"
+
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
-
+#include "imgui_filebrowser.h"
 #include "scene/scene.h"
+#include <iostream>
+#include "utils\meshLoader.h"
 
 void UI::init(GLFWwindow*window,Scene*scene) {
 	const char* glsl_version = "#version 130";
@@ -14,7 +18,7 @@ void UI::init(GLFWwindow*window,Scene*scene) {
 	_win = window;
 	_scene = scene;
 }
-
+imgui_addons::ImGuiFileBrowser file_dialog;
 void UI::updateCamera() {
 
 	Camera& camera = _scene->getCamera();
@@ -26,7 +30,22 @@ void UI::updateCamera() {
 	ImGui::InputFloat3("camera position",(float*)&camera._position);
 	ImGui::InputFloat3("camera lookAt",(float*)&camera._lookAt);
 
+	//load
+	if (ImGui::Button("load obj")) {
+		ImGui::OpenPopup("Open File");
+	}
+	if (file_dialog.showFileDialog("Open File", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".obj"))
+	{
+		std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
+		std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+		//
 
+		auto objs = loadObj(file_dialog.selected_path);
+		for (auto& obj : objs) {
+			_scene->addObject(obj);
+		}
+
+	}
 
 	ImGui::End();
 }

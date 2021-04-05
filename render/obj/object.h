@@ -1,7 +1,7 @@
 #pragma once
 #include "GL\glew.h"
-
 #include "glm\glm.hpp"
+#include <string>
 class Mesh;
 class Material;
 
@@ -19,8 +19,11 @@ private:
 	GLuint _vboId;
 
 	Object(const Object&);
+	std::string _name;
 public:
 	//Object(Object&& obj);
+	inline const std::string& getName()const { return _name; }
+	inline void setName(const std::string& name) { _name = name; }
 	Object(Mesh* mesh, Material* mat);
 	~Object();
 	inline const glm::mat4& getMatrixM() { return _matrixM; }
