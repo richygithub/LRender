@@ -38,3 +38,15 @@ add_executable(editor ${SOURCES})
 target_link_libraries(editor
 	${ALL_LIBS}
 )
+
+if( WIN32 )
+
+	message("${CMAKE_CURRENT_SOURCE_DIR} ..  ${CMAKE_BINARY_DIR}")
+	add_custom_command(TARGET editor
+		PRE_BUILD
+		#COMMAND ${CMAKE_COMMAND} -E copy "${SDL2_RUNTIME_LIBRARY}" ${CMAKE_BINARY_DIR}/RecastDemo/$(ConfigurationName)/
+		COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/res/ ${CMAKE_BINARY_DIR}/res
+		#COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/Bin/TestCases ${CMAKE_BINARY_DIR}/RecastDemo/$(ConfigurationName)/TestCases
+		#COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Bin/DroidSans.ttf ${CMAKE_BINARY_DIR}/RecastDemo/$(ConfigurationName)/
+	)
+endif()

@@ -5,7 +5,7 @@
 Camera::Camera():_fov(45.0f),
 	_aspect(4.0f/3.0f),
 	_near(0.1f),
-	_far(100.0f),
+	_far(1000.0f),
 	_position(0.0f,0.0f,5.0f),
 	_lookAt(0.0f,0.0f,0.0f),
 	_clearColor(0.23f,0.23f,0.33f,1.0f)

@@ -44,8 +44,46 @@ void UI::updateCamera() {
 		for (auto& obj : objs) {
 			_scene->addObject(obj);
 		}
+	}
+
+	//obj
+	if (ImGui::BeginTable("split", 2)) {
+
+		auto objs = _scene->getObjs();
+		for (auto& it: objs) {
+			int id = it.first;
+			Object& obj = *it.second;
+			ImGui::PushID(id);
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::AlignTextToFramePadding();
+			//bool node_open = ImGui::TreeNode("Object", "%d",  idx);
+			ImGui::Text("%s",obj.getName().c_str() );
+
+			ImGui::TableSetColumnIndex(1);
+			//ImGui::Text("my sailor is rich");
+			ImGui::Checkbox("visiable", &obj.visiable);
+			ImGui::PopID();
+
+		}
+
+		//for (int idx = 0; idx < 5; idx++) {
+		//	ImGui::PushID(idx);
+		//	ImGui::TableNextRow();
+		//	ImGui::TableSetColumnIndex(0);
+		//	ImGui::AlignTextToFramePadding();
+		//	//bool node_open = ImGui::TreeNode("Object", "%d",  idx);
+		//	ImGui::Text("obj_%d", idx);
+
+		//	ImGui::TableSetColumnIndex(1);
+		//	ImGui::Text("my sailor is rich");
+		//	ImGui::PopID();
+		//}
+
+		ImGui::EndTable();
 
 	}
+
 
 	ImGui::End();
 }

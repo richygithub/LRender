@@ -22,6 +22,7 @@ public:
 	void update();
 
 	void addObject(Object* obj);
+	inline const std::map<int, Object*>& getObjs() const { return _objects; };
 	void removeObject(int id);
 
 

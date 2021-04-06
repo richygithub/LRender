@@ -4,7 +4,7 @@
 Mesh::Mesh(std::vector<glm::vec3>& verts,
 	std::vector<glm::vec3>& normals,
 	std::vector<glm::vec2>& uvs,
-	std::vector<glm::ivec3>& tris
+	std::vector<idxType>& tris
 ) {
 	_verts = verts;
 	_normals = normals;

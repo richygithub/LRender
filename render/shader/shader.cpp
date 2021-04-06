@@ -4,13 +4,16 @@
 #include <vector>
 
 std::map< std::string, GLuint> Shader::_shaders;
+
+std::string Shader::path = "res/shaders/";
+
 GLuint Shader::load(const std::string& name) {
 
 	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
 	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
-	std::string vertexFile = name + ".vert";
-	std::string fragFile= name + ".frag";
+	std::string vertexFile = path + name + ".vert";
+	std::string fragFile= path + name + ".frag";
 
 
 	// Read the Vertex Shader code from the file
@@ -25,6 +28,7 @@ GLuint Shader::load(const std::string& name) {
 	else {
 		printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", vertexFile.c_str());
 		getchar();
+
 		return 0;
 	}
 

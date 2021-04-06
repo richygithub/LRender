@@ -17,10 +17,20 @@ private:
 
 	GLuint _vaoId;
 	GLuint _vboId;
+	GLuint _eleId;
+	GLuint _uvId;
+	GLuint _normalId;
+
+
+
+
+
 
 	Object(const Object&);
 	std::string _name;
 public:
+		
+	bool visiable;
 	//Object(Object&& obj);
 	inline const std::string& getName()const { return _name; }
 	inline void setName(const std::string& name) { _name = name; }

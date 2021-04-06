@@ -31,6 +31,8 @@ void Scene::init() {
 
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 
 	//test
 	std::vector<glm::vec3> verts;
@@ -38,11 +40,37 @@ void Scene::init() {
 	verts.push_back(glm::vec3(1.0f, -1.0f, 0.0f));
 	verts.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
 
+	std::vector<idxType> tris;
+	tris.push_back(0);
+	tris.push_back(1);
+	tris.push_back(2);
+	
+	std::vector<glm::vec3> normals;
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
 
-	Mesh* mesh = new Mesh();
-	mesh->setVerts(verts);
+	std::vector<glm::vec2> uvs;
+	uvs.push_back(glm::vec2(0.0f, 0.0f));
+	uvs.push_back(glm::vec2(1.0f, 0.0f));
+	uvs.push_back(glm::vec2(0.5f, 1.0f));
 
-	Object* obj = new Object(mesh,new Material("simple") );
+
+
+
+
+
+
+
+
+
+
+	Mesh* mesh = new Mesh(verts,normals,uvs,tris);
+	//mesh->setVerts(verts);
+	//mesh->setTris(tris);
+
+	Object* obj = new Object(mesh,new Material("st") );
+	obj->setName("simple triangle");
 
 	addObject(obj);
 
@@ -54,10 +82,21 @@ void Scene::render(Object& obj) {
 	GLuint programId = Shader::getProgram(obj._material->getShaderName());
 	glUseProgram(programId);
 	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
+	GLuint Matrix_M = glGetUniformLocation(programId, "M");
+	GLuint Matrix_VP = glGetUniformLocation(programId, "VP");
+	GLuint eyePos = glGetUniformLocation(programId, "eyePosition");
+
+
+
+
 	const glm::mat4& Model = obj.getMatrixM();
 	glm::mat4 MVP = _matrixVP * Model;
 	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
-	//set mvp matrix
+	glUniformMatrix4fv(Matrix_M, 1, GL_FALSE, &Model[0][0]);
+	glUniformMatrix4fv(Matrix_VP, 1, GL_FALSE, &_matrixVP[0][0]);
+	auto cameraPos = _camera.getPosition();
+	glUniform3f(eyePos, cameraPos.x, cameraPos.y, cameraPos.z);
+
 
 	//load verts
 	if (obj._vaoId == 0) {
@@ -69,10 +108,35 @@ void Scene::render(Object& obj) {
 		auto verts = obj.getMesh()->getVerts();
 		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3)*verts.size(), verts.data(), GL_STATIC_DRAW);
 	}
+
+	if (obj._uvId == 0) {
+		glGenBuffers(1, &obj._uvId);
+		glBindBuffer(GL_ARRAY_BUFFER, obj._uvId);
+		auto uvs = obj.getMesh()->getUVs();
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), uvs.data(), GL_STATIC_DRAW);
+	}
+
+	if (obj._normalId == 0) {
+		glGenBuffers(1, &obj._normalId);
+		glBindBuffer(GL_ARRAY_BUFFER, obj._normalId);
+		auto normals= obj.getMesh()->getNormals();
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), normals.data(), GL_STATIC_DRAW);
+	}
+
+
+
+
+	auto tris = obj.getMesh()->getTris();
+	if (obj._eleId == 0 ) {
+		glGenBuffers(1, &obj._eleId);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj._eleId);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, tris.size() * sizeof(idxType), tris.data() , GL_STATIC_DRAW);
+	}
+
 	glBindVertexArray(obj._vaoId);
+	glBindBuffer(GL_ARRAY_BUFFER, obj._vboId);
 	glEnableVertexAttribArray(0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, obj._vboId);
 	glVertexAttribPointer(
 		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
 		3,                  // size
@@ -82,10 +146,46 @@ void Scene::render(Object& obj) {
 		(void*)0            // array buffer offset
 	);
 
-	// Draw the triangle !
-	glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
+	//glBindBuffer(GL_ARRAY_BUFFER, obj._vboId);
+	//// Draw the triangle !
+	//glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
+
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, obj._uvId);
+	glVertexAttribPointer(
+		1,                                // attribute
+		2,                                // size
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+
+	glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, obj._normalId);
+	glVertexAttribPointer(
+		2,                                // attribute
+		3,                                // size
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj._eleId);
+	glDrawElements(
+		GL_TRIANGLES,      // mode
+		tris.size(),    // count
+		GL_UNSIGNED_INT,   // type
+		(void*)0           // element array buffer offset
+	);
 
 	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+
+
 
 
 	//
@@ -96,10 +196,11 @@ void Scene::update() {
 	_matrixVP = _camera.getVPMatrix();
 	auto clearColor = _camera.getClearColor();
 	glClearColor(clearColor.r,clearColor.g,clearColor.b,clearColor.a);
-	glClear(GL_COLOR_BUFFER_BIT);
-
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	for (auto& obj : _objects) {
-		render(*obj.second);
+		if (obj.second->visiable) {
+			render(*obj.second);
+		}
 	}
 }

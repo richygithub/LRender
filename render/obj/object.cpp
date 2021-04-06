@@ -9,7 +9,11 @@ Object::Object(Mesh* mesh, Material* mat):
 		_position(glm::mat3(0.0f)),
 		_id(0),
 		_vaoId(0),
-		_vboId(0)
+		_vboId(0),
+		_eleId(0),
+		_uvId(0),
+		_normalId(0),
+		visiable(true)
 {
 
 
@@ -40,6 +44,16 @@ Object::~Object() {
 	if (_vboId != 0) {
 		glDeleteBuffers(1, &_vboId);
 	}
+	if (_eleId != 0) {
+		glDeleteBuffers(1, &_eleId);
+	}
+	if (_uvId!= 0) {
+		glDeleteBuffers(1, &_uvId);
+	}
+	if (_normalId!= 0) {
+		glDeleteBuffers(1, &_normalId);
+	}
+
 }
 
 void Object::setPosition(const glm::mat3& position) {
