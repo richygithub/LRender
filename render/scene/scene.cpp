@@ -6,6 +6,7 @@
 #include "mesh\mesh.h"
 #include "shader\shader.h"
 #include "material\material.h"
+#include "utils\meshLoader.h"
 
 
 Scene::Scene():_seqnum(0) {
@@ -35,44 +36,40 @@ void Scene::init() {
 	glDepthFunc(GL_LESS);
 
 	//test
-	std::vector<glm::vec3> verts;
-	verts.push_back(glm::vec3(-1.0f, -1.0f, 0.0f));
-	verts.push_back(glm::vec3(1.0f, -1.0f, 0.0f));
-	verts.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+	//std::vector<glm::vec3> verts;
+	//verts.push_back(glm::vec3(-1.0f, -1.0f, 0.0f));
+	//verts.push_back(glm::vec3(1.0f, -1.0f, 0.0f));
+	//verts.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
 
-	std::vector<idxType> tris;
-	tris.push_back(0);
-	tris.push_back(1);
-	tris.push_back(2);
-	
-	std::vector<glm::vec3> normals;
-	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
-	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
-	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	//std::vector<idxType> tris;
+	//tris.push_back(0);
+	//tris.push_back(1);
+	//tris.push_back(2);
+	//
+	//std::vector<glm::vec3> normals;
+	//normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	//normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	//normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
 
-	std::vector<glm::vec2> uvs;
-	uvs.push_back(glm::vec2(0.0f, 0.0f));
-	uvs.push_back(glm::vec2(1.0f, 0.0f));
-	uvs.push_back(glm::vec2(0.5f, 1.0f));
-
-
+	//std::vector<glm::vec2> uvs;
+	//uvs.push_back(glm::vec2(0.0f, 0.0f));
+	//uvs.push_back(glm::vec2(1.0f, 0.0f));
+	//uvs.push_back(glm::vec2(0.5f, 1.0f));
 
 
+	//Mesh* mesh = new Mesh(verts,normals,uvs,tris);
+	////mesh->setVerts(verts);
+	////mesh->setTris(tris);
 
+	//Object* obj = new Object(mesh,new Material("st") );
+	//obj->setName("simple triangle");
+	//addObject(obj);
+	std::string objfile = "res/mesh/unitytest.obj";
+	auto objs = loadObj(objfile);
+	for (auto& obj : objs) {
+		addObject(obj);
+	}
 
-
-
-
-
-
-	Mesh* mesh = new Mesh(verts,normals,uvs,tris);
-	//mesh->setVerts(verts);
-	//mesh->setTris(tris);
-
-	Object* obj = new Object(mesh,new Material("st") );
-	obj->setName("simple triangle");
-
-	addObject(obj);
 
 }
 

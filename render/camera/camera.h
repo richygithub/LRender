@@ -11,6 +11,8 @@ class Camera {
 	float _near;
 	float _far;
 	glm::vec4 _clearColor;
+	glm::mat4 _matrixV;
+	glm::mat4 _matrixP;
 	friend class UI;
 public:
 
@@ -32,6 +34,10 @@ public:
 	inline glm::vec3 getLookAt() { return _lookAt ; }
 
 	glm::mat4 getVPMatrix();
+	inline glm::mat4 getMatrixV()const { return _matrixV; };
+	inline glm::mat4 getMatrixP()const { return _matrixP; };
+
+
 
 
 

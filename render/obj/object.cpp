@@ -15,7 +15,7 @@ Object::Object(Mesh* mesh, Material* mat):
 		_normalId(0),
 		visiable(true)
 {
-
+	//_matrixM[0][0] = -1;
 
 }
 

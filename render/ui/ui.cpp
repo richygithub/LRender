@@ -9,6 +9,10 @@
 #include <iostream>
 #include "utils\meshLoader.h"
 
+#include <GLFW/glfw3.h>
+#include "glm\glm.hpp"
+#include "glm\gtc\matrix_transform.hpp"
+
 void UI::init(GLFWwindow*window,Scene*scene) {
 	const char* glsl_version = "#version 130";
 	ImGui::CreateContext();
@@ -25,7 +29,27 @@ void UI::updateCamera() {
 
 	ImGui::Begin("Camera");                          // Create a window called "Hello, world!" and append into it.
 	//ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-	
+
+
+
+
+	double xpos, ypos;
+	glfwGetCursorPos(_win, &xpos, &ypos);
+	//glm::unProject()
+	auto matrixP = camera.getMatrixP();
+	auto matrixV = camera.getMatrixV();
+	glm::ivec4 viewport;
+	glGetIntegerv(GL_VIEWPORT, (int*)&viewport);
+	ypos = (float)viewport[3] - ypos;
+
+	GLfloat depth;
+	glReadPixels(xpos, ypos, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+
+	auto wpos = glm::unProject(glm::vec3(xpos,ypos, depth), matrixV, matrixP,viewport);
+
+	ImGui::Text("(%.3f,%.3f,%.3f)-->\n(%.3f,%.3f,%.3f)", xpos, ypos,depth,wpos.x,wpos.y,wpos.z);
+
+
 	ImGui::ColorEdit3("clear color", (float*)&camera._clearColor);
 	ImGui::InputFloat3("camera position",(float*)&camera._position);
 	ImGui::InputFloat3("camera lookAt",(float*)&camera._lookAt);
