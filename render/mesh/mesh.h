@@ -9,6 +9,9 @@ class Mesh {
 	std::vector<glm::vec3> _normals;
 	std::vector<glm::vec2> _uvs;
 	std::vector<idxType> _tris;
+	std::vector<idxType> _lines;
+
+
 public:
 	Mesh(std::vector<glm::vec3>& verts, 
 		std::vector<glm::vec3>& normals, 
@@ -26,6 +29,8 @@ public:
 	inline const std::vector<idxType>& getTris()const { return _tris; };
 	inline const std::vector<glm::vec2>& getUVs()const { return _uvs; };
 	inline const std::vector<glm::vec3>& getNormals()const { return _normals; };
+
+	const std::vector<idxType>& getLines()const;
 	
 
 

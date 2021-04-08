@@ -28,6 +28,7 @@ private:
 
 	Object(const Object&);
 	std::string _name;
+
 public:
 		
 	bool visiable;

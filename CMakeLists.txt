@@ -8,6 +8,8 @@ find_package(OpenGL REQUIRED)
 
 
 add_subdirectory (external)
+add_subdirectory (navmesh)
+
 
 include_directories(
 	external/glfw-3.1.2/include/
@@ -15,6 +17,7 @@ include_directories(
 	external/glew-1.13.0/include/
 	imgui/
 	render/
+	navmesh/
 	.
 )
 
@@ -22,6 +25,7 @@ set(ALL_LIBS
 	${OPENGL_LIBRARY}
 	glfw
 	GLEW_1130
+	navmesh
 )
 add_definitions(
 	-DGLEW_STATIC
