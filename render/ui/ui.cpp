@@ -150,14 +150,17 @@ void showTileBorder(Scene*scene) {
 	std::vector< glm::vec3 > verts;
 	auto minVert = gMeshBuilder._min;
 	auto maxVert = gMeshBuilder._max;
-	int width = (maxVert.x - minVert.x + 0.5) / ( gBuildCfg.tileSize*gBuildCfg.cellSize);
-	int height = (maxVert.z - minVert.z + 0.5) / ( gBuildCfg.tileSize*gBuildCfg.cellSize);
+	int width = ceil( (maxVert.x - minVert.x ) / ( gBuildCfg.tileSize*gBuildCfg.cellSize) );
+	int height = ceil( (maxVert.z - minVert.z ) / ( gBuildCfg.tileSize*gBuildCfg.cellSize) );
 
 
 	auto stVert = minVert;
+	float maxz = minVert.z + height* gBuildCfg.tileSize * gBuildCfg.cellSize;
+	float maxx = minVert.x + width*gBuildCfg.tileSize * gBuildCfg.cellSize;
+
 	for (int x = 0; x <= width; x++) {
 		stVert.x = minVert.x + x * gBuildCfg.tileSize * gBuildCfg.cellSize;
-		auto endVert = glm::vec3(stVert.x, stVert.y, maxVert.z);
+		auto endVert = glm::vec3(stVert.x, stVert.y, maxz);
 
 		verts.push_back(stVert);
 		verts.push_back(endVert);
@@ -167,7 +170,7 @@ void showTileBorder(Scene*scene) {
 	stVert = minVert;
 	for (int z = 0; z <= height; z++) {
 		stVert.z = minVert.z + z * gBuildCfg.tileSize * gBuildCfg.cellSize;
-		auto endVert = glm::vec3(maxVert.x, stVert.y, stVert.z);
+		auto endVert = glm::vec3(maxx, stVert.y, stVert.z);
 
 		verts.push_back(stVert);
 		verts.push_back(endVert);

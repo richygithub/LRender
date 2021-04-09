@@ -264,8 +264,8 @@ void NavmeshBuilder::build(	Cfg cfg) {
 	if (_tiles != nullptr) {
 		delete[] _tiles;
 	}
-	_width = (_max.x - _min.x + 0.5) / (_tileSize * _cellSize);
-	_height = (_max.z - _min.z + 0.5) / (_tileSize * _cellSize);
+	_width = ceil(  (_max.x - _min.x ) / (_tileSize * _cellSize) );
+	_height = ceil( (_max.z - _min.z ) / (_tileSize * _cellSize) );
 
 	_tiles = new Tile[_width * _height];
 	for (int x = 0; x < _width; x++) {
