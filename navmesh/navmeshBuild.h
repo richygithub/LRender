@@ -31,13 +31,34 @@ struct NavmeshBuilder {
 	void init(Cfg cfg);
 
 	std::vector<glm::vec3>  rasterize(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& tris, float y);
-	void build(const std::vector<glm::vec3>& planeVerts, Cfg cfg);
+	void build(Cfg cfg );
 
 	NavmeshBuilder();
 	~NavmeshBuilder();
 
+	void setPlane(const std::vector<glm::vec3>& verts);
+
+	inline void addObj(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& tris) { 
+		_objVerts.push_back(verts); 
+		_objTris.push_back(tris);
+	}
+	inline void clearObj() {
+		_objVerts.clear();
+		_objTris.clear();
+	}
+	std::vector< std::vector<glm::vec3> > _debug;
+
+	void debug();
 private:
+
+	std::vector<glm::vec3> _planes;
+
+	std::vector< std::vector<glm::vec3> > _objVerts;
+	std::vector< std::vector<uint32_t> >  _objTris;
+
 	void setCellBlock(float x,float y);
+	void setCellBlock(int x,int y);
+	glm::ivec2 getCellXY(float x, float y);
 	void rasterizeFlatBottomTri(const std::vector<glm::vec3>& verts );
 	void rasterizeFlatTopTri(const std::vector<glm::vec3>& verts );
 

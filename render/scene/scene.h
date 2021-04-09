@@ -23,12 +23,13 @@ private:
 
 	void renderLines( const std::vector< glm::vec3 > & verts,const std::vector<idxType>& lines);
 
-	void renderTris(const std::vector<glm::vec3>&verts);
 
 
 public:
 
 	void renderLines(const std::vector< glm::vec3 >& verts);
+	void renderQuads(const std::vector< glm::vec3 >& verts);
+	void renderTris(const std::vector<glm::vec3>&verts);
 
 	inline Camera& getCamera() { return _camera; }
 

@@ -36,7 +36,7 @@ void Scene::init() {
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-
+	//glEnable(GL_CULL_FACE);
 	//test
 	//std::vector<glm::vec3> verts;
 	//verts.push_back(glm::vec3(-1.0f, -1.0f, 0.0f));
@@ -117,6 +117,49 @@ void Scene::renderTris(const std::vector<glm::vec3>& verts) {
 	glDeleteBuffers(1, &vbo);
 
 }
+void Scene::renderQuads(const std::vector< glm::vec3 >& verts) {
+	GLuint programId = Shader::getProgram("tris");
+	glUseProgram(programId);
+	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
+
+	glm::mat4 MVP = _matrixVP;
+
+	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
+
+	GLuint vao;
+	GLuint vbo;
+
+
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verts.size(), verts.data(), GL_STATIC_DRAW);
+
+
+
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+	glDrawArrays(GL_QUADS, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
+	glDisableVertexAttribArray(0);
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+
+}
+
 void Scene::renderLines(const std::vector< glm::vec3 >& verts) {
 	GLuint programId = Shader::getProgram("line");
 	glUseProgram(programId);
@@ -366,6 +409,15 @@ void Scene::update() {
 	for (auto& line: _lines) {
 		renderLines(line);
 	}
+	//glDisable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_LESS);
+
+	//glBegin(GL_LINES);
+	//glColor4ub(255, 0, 0, 255); glVertex3f(-0.5f, -0.25f, -2.5f);
+	//glColor4ub(0, 0, 255, 255); glVertex3f(0.5f, -0.25f, -2.5f);
+	//glColor4ub(0, 255, 0, 255); glVertex3f(1.0f, 0.5f, -2.5f);
+	//glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, 0.5f, -2.5f);
+	//glEnd();
 
 
 

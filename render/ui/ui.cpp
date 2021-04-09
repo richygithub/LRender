@@ -14,6 +14,9 @@
 #include "glm\gtc\matrix_transform.hpp"
 #include "navmeshBuild.h"
 
+using namespace glm;
+using namespace std;
+
 
 void UI::init(GLFWwindow*window,Scene*scene) {
 	const char* glsl_version = "#version 130";
@@ -29,6 +32,8 @@ imgui_addons::ImGuiFileBrowser file_dialog;
 int mainPlaneId = -1;
 void showNavmesh(Scene* scene);
 void showObjects(Scene* scene);
+void showTileRasterize(Scene* scene);
+
 void UI::updateCamera() {
 
 	Camera& camera = _scene->getCamera();
@@ -125,8 +130,12 @@ void showObjects(Scene* scene) {
 
 			ImGui::TableSetColumnIndex(2);
 			//ImGui::Text("my sailor is rich");
-			if (ImGui::RadioButton("main plane", &mainPlaneId, id)) {
-
+			int select = mainPlaneId;
+			if (ImGui::RadioButton("main plane", &select, id)) {
+				if (select != mainPlaneId) {
+					gMeshBuilder.setPlane(obj.getMesh()->getVerts());
+					mainPlaneId = select;
+				}
 			}
 
 			ImGui::PopID();
@@ -166,6 +175,55 @@ void showTileBorder(Scene*scene) {
 	}
 	scene->renderLines(verts);
 
+
+
+
+
+
+
+
+
+
+}
+void showTileRasterize(Scene* scene) {
+	//gMeshBuilder.
+	float cellSize = gMeshBuilder._cellSize;
+	vector<vec3> verts;
+	for (int x = 0; x < gMeshBuilder._width; x++) {
+		for (int y = 0; y<gMeshBuilder._height; y++) {
+			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+			if (tile.cells != nullptr) {
+				float offsetX = tile.x * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.x;
+				float offsetY = tile.y * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.z;
+
+
+				for (int cx = 0; cx < tile.size; cx++) {
+					for (int cy = 0; cy < tile.size; cy++) {
+						if (tile.cells[cx + cy * tile.size].value == 1) {
+							//push
+							float minx = cx * cellSize + offsetX;
+							float miny = cy * cellSize + offsetY;
+							vec3 v0(minx, 0, miny);
+							vec3 v1(minx+cellSize, 0, miny);
+							vec3 v2(minx+cellSize, 0, miny+cellSize);
+							vec3 v3(minx, 0, miny+cellSize);
+
+							verts.push_back(v0);
+							verts.push_back(v1);
+							verts.push_back(v2);
+
+							verts.push_back(v0);
+							verts.push_back(v2);
+							verts.push_back(v3);
+
+
+						}
+					}
+				}
+			}
+		}
+	}
+	scene->renderTris(verts);
 }
 
 void showNavmesh(Scene*scene) {
@@ -176,6 +234,22 @@ void showNavmesh(Scene*scene) {
 	if (ImGui::SliderFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2)) {
 
 	}
+	//std::vector<glm::vec3> quads;
+	////quads.push_back(vec3(6.6, 0.2, 0));
+	////quads.push_back(vec3(3.6, 0.2, 0));
+	////quads.push_back(vec3(6.6, 3.2, 0));
+	////quads.push_back(vec3(3.6, 3.2, 0));
+
+	//quads.push_back(vec3(3.6, 0.2, 0));
+	//quads.push_back(vec3(3.6, 3.2, 0));
+	//quads.push_back(vec3(6.6, 0.2, 0));
+	//quads.push_back(vec3(6.6, 3.2, 0));
+	//quads.push_back(vec3(6.6, 0.2, 0));
+	//quads.push_back(vec3(3.6, 3.2, 0));
+	//scene->renderTris(quads);
+
+
+
 
 
 	if (ImGui::Button("build")) {
@@ -184,13 +258,13 @@ void showNavmesh(Scene*scene) {
 			auto mesh = it.second->getMesh();
 			if (it.first != mainPlaneId) {
 
-				
-				auto verts = gMeshBuilder.rasterize(mesh->getVerts(), mesh->getTris(), 0);
+				if(it.second->visiable)
+				gMeshBuilder.addObj(mesh->getVerts(), mesh->getTris());
+				//auto verts = gMeshBuilder.rasterize(mesh->getVerts(), mesh->getTris(), 0);
 
-				scene->addMesh(verts);
+				//scene->addMesh(verts);
 			}
 			else {
-				gMeshBuilder.build(mesh->getVerts(),gBuildCfg);
 				//std::vector< glm::vec3 > verts;
 				//auto minVert = gMeshBuilder._min;
 				//auto maxVert = gMeshBuilder._max;
@@ -216,7 +290,15 @@ void showNavmesh(Scene*scene) {
 
 			}
 		}
+		gMeshBuilder.build(gBuildCfg);
+		gMeshBuilder.debug();
+		//for (auto& v : gMeshBuilder._debug) {
+		//	scene->addMesh(v);
+		//}
 	}
-	showTileBorder(scene);
 
+	
+
+	showTileBorder(scene);
+	showTileRasterize(scene);
 }
