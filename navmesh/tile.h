@@ -20,9 +20,15 @@ struct Tile {
 	unsigned int y;
 	unsigned int size;
 	Cell* cells;
+	uint16_t* dist;
 	void init(int x,int y,int size);
 	void setCell(int x, int y);
-	Tile() :cells(nullptr) {};
+	Tile() :cells(nullptr), dist(nullptr){};
+
+	~Tile();
+	void calcDistField();
+
+	bool isCellConnectedDir(int x,int y,int dir);
 
 };
 

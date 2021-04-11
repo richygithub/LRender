@@ -192,6 +192,9 @@ void showTileRasterize(Scene* scene) {
 	//gMeshBuilder.
 	float cellSize = gMeshBuilder._cellSize;
 	vector<vec3> verts;
+	vector<vec4> colors;
+
+
 	for (int x = 0; x < gMeshBuilder._width; x++) {
 		for (int y = 0; y<gMeshBuilder._height; y++) {
 			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
@@ -207,9 +210,16 @@ void showTileRasterize(Scene* scene) {
 							float minx = cx * cellSize + offsetX;
 							float miny = cy * cellSize + offsetY;
 							vec3 v0(minx, 0, miny);
+							auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
 							vec3 v1(minx+cellSize, 0, miny);
+							auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
 							vec3 v2(minx+cellSize, 0, miny+cellSize);
+							auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+
 							vec3 v3(minx, 0, miny+cellSize);
+							auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
 
 							verts.push_back(v0);
 							verts.push_back(v1);
@@ -219,6 +229,14 @@ void showTileRasterize(Scene* scene) {
 							verts.push_back(v2);
 							verts.push_back(v3);
 
+							colors.push_back(c0);
+							colors.push_back(c1);
+							colors.push_back(c2);
+
+							colors.push_back(c0);
+							colors.push_back(c2);
+							colors.push_back(c3);
+
 
 						}
 					}
@@ -226,7 +244,7 @@ void showTileRasterize(Scene* scene) {
 			}
 		}
 	}
-	scene->renderTris(verts);
+	scene->renderTris(verts,colors);
 }
 
 void showNavmesh(Scene*scene) {
@@ -294,7 +312,7 @@ void showNavmesh(Scene*scene) {
 			}
 		}
 		gMeshBuilder.build(gBuildCfg);
-		gMeshBuilder.debug();
+		//gMeshBuilder.debug();
 		//for (auto& v : gMeshBuilder._debug) {
 		//	scene->addMesh(v);
 		//}

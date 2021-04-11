@@ -30,6 +30,8 @@ public:
 	void renderLines(const std::vector< glm::vec3 >& verts);
 	void renderQuads(const std::vector< glm::vec3 >& verts);
 	void renderTris(const std::vector<glm::vec3>&verts);
+	void renderTris(const std::vector<glm::vec3>&verts,const std::vector<glm::vec4>& colors);
+
 
 	inline Camera& getCamera() { return _camera; }
 

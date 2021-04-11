@@ -167,7 +167,6 @@ vector<Object*> loadObj(const std::string& filename) {
 			uvs.push_back(glm::vec2(x, y));
 		}
 
-
 		if (row[0] == 'f')
 		{
 			// Faces

@@ -74,6 +74,71 @@ void Scene::init() {
 
 
 }
+void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<glm::vec4>& colors) {
+	GLuint programId = Shader::getProgram("trisColor");
+	glUseProgram(programId);
+	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
+
+	glm::mat4 MVP = _matrixVP;
+
+	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
+
+	GLuint vao;
+	GLuint vbo;
+	GLuint vcolor;
+
+
+
+
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verts.size(), verts.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &vcolor);
+	glBindBuffer(GL_ARRAY_BUFFER, vcolor);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * colors.size(), colors.data(), GL_STATIC_DRAW);
+
+
+
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, vcolor);
+	glEnableVertexAttribArray(1);
+
+	glVertexAttribPointer(
+		1,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		4,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+
+	glDrawArrays(GL_TRIANGLES, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &vcolor);
+}
+
 
 void Scene::renderTris(const std::vector<glm::vec3>& verts) {
 	GLuint programId = Shader::getProgram("tris");
