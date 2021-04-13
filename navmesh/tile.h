@@ -20,15 +20,22 @@ struct Tile {
 	unsigned int y;
 	unsigned int size;
 	Cell* cells;
+	uint16_t maxDist;
 	uint16_t* dist;
+	uint16_t* region;
+
+
 	void init(int x,int y,int size);
 	void setCell(int x, int y);
-	Tile() :cells(nullptr), dist(nullptr){};
+	Tile() :cells(nullptr), dist(nullptr),region(nullptr){};
 
 	~Tile();
 	void calcDistField();
 
 	bool isCellConnectedDir(int x,int y,int dir);
+	bool isBoader(int x,int y);
+
+	void buildRegion();
 
 };
 

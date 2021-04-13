@@ -239,16 +239,22 @@ void NavmeshBuilder::debug() {
 		for (int y = 0; y < gMeshBuilder._height; y++) {
 			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
 			if (tile.cells != nullptr) {
-
-				for (int cx = 0; cx < tile.size; cx++) {
-					for (int cy = 0; cy < tile.size; cy++) {
-						if (tile.cells[cx + cy * tile.size].value == 1) {
-							//push
-							printf("cell (%d,%d) at tile(%d,%d)\n", cx, cy, x, y);
-
+				printf("----------(%d %d)-----------",x,y);
+				for (int cy = 0; cy < tile.size; cy++) {
+					for (int cx = 0; cx < tile.size; cx++) {
+						if (tile.cells[cx + cy * tile.size].value == 0) {
+								//push
+								//printf("cell (%d,%d) at tile(%d,%d)\n", cx, cy, x, y);
+								printf("%2d ", tile.dist[cx + cy * tile.size]);
+							}
+							else {
+								printf("-1");
 						}
 					}
+					printf("\n");
 				}
+				printf("\n");
+	
 			}
 		}
 	}
@@ -280,13 +286,14 @@ void NavmeshBuilder::build(	Cfg cfg) {
 
 		auto vs = rasterize(_objVerts[idx], _objTris[idx], _max.y );
 		_debug.push_back(vs);
-
 	}
-
-}
-void build(const std::vector<glm::vec3>& planeVerts,Cfg cfg) {
-
-
+	//calc dist field
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].calcDistField();
+		}
+	}
 
 
 }

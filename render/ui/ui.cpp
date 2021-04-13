@@ -205,21 +205,23 @@ void showTileRasterize(Scene* scene) {
 
 				for (int cx = 0; cx < tile.size; cx++) {
 					for (int cy = 0; cy < tile.size; cy++) {
-						if (tile.cells[cx + cy * tile.size].value == 1) {
+						if (tile.cells[cx + cy * tile.size].value == 0) {
 							//push
 							float minx = cx * cellSize + offsetX;
 							float miny = cy * cellSize + offsetY;
 							vec3 v0(minx, 0, miny);
-							auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+							//auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
 
 							vec3 v1(minx+cellSize, 0, miny);
-							auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+							//auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
 
 							vec3 v2(minx+cellSize, 0, miny+cellSize);
-							auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+							//auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
 
 							vec3 v3(minx, 0, miny+cellSize);
-							auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+							//auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+							float depth = tile.dist[cx + cy * tile.size]/(float)tile.maxDist;
+							auto c = vec4(depth , depth, depth, 1);
 
 							verts.push_back(v0);
 							verts.push_back(v1);
@@ -229,13 +231,13 @@ void showTileRasterize(Scene* scene) {
 							verts.push_back(v2);
 							verts.push_back(v3);
 
-							colors.push_back(c0);
-							colors.push_back(c1);
-							colors.push_back(c2);
+							colors.push_back(c);
+							colors.push_back(c);
+							colors.push_back(c);
 
-							colors.push_back(c0);
-							colors.push_back(c2);
-							colors.push_back(c3);
+							colors.push_back(c);
+							colors.push_back(c);
+							colors.push_back(c);
 
 
 						}
@@ -312,7 +314,7 @@ void showNavmesh(Scene*scene) {
 			}
 		}
 		gMeshBuilder.build(gBuildCfg);
-		//gMeshBuilder.debug();
+		gMeshBuilder.debug();
 		//for (auto& v : gMeshBuilder._debug) {
 		//	scene->addMesh(v);
 		//}
