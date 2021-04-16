@@ -242,7 +242,7 @@ void NavmeshBuilder::debug() {
 				printf("----------(%d %d)-----------",x,y);
 				for (int cy = 0; cy < tile.size; cy++) {
 					for (int cx = 0; cx < tile.size; cx++) {
-						if (tile.cells[cx + cy * tile.size].value == 0) {
+						if (tile.cells[cx + cy * tile.size].block == 0) {
 								//push
 								//printf("cell (%d,%d) at tile(%d,%d)\n", cx, cy, x, y);
 								printf("%2d ", tile.dist[cx + cy * tile.size]);
@@ -292,6 +292,8 @@ void NavmeshBuilder::build(	Cfg cfg) {
 		for (int y = 0; y < _height; y++) {
 			int idx = y * _width + x;
 			_tiles[idx].calcDistField();
+			_tiles[idx].calcBorder();
+			//_tiles[idx].buildRegion();
 		}
 	}
 

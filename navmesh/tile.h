@@ -9,9 +9,14 @@
 #include "glm\glm.hpp"
 
 struct Cell {
-	char value;
+	unsigned char block:1;
+	unsigned char border:4;  //ÊÇ·ñÎª±ß½ç
+	unsigned char contourVisited:1;
+
 	Cell() {
-		value = 0;
+		block = 0;
+		border
+		contourVisited = 0;
 	}
 };
 
@@ -36,6 +41,12 @@ struct Tile {
 	bool isBoader(int x,int y);
 
 	void buildRegion();
+	void buildSimpleRegion();
+	void buildContour();
+	
+	void walkContour(int x,int y);
+	void calcBorder();
+
 
 };
 

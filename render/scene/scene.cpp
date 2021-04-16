@@ -67,6 +67,9 @@ void Scene::init() {
 	//obj->setName("simple triangle");
 	//addObject(obj);
 	std::string objfile = "res/mesh/unitytest.obj";
+	//std::string objfile = "res/mesh/unitysimple2.obj";
+
+
 	auto objs = loadObj(objfile);
 	for (auto& obj : objs) {
 		addObject(obj);
