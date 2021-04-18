@@ -15,7 +15,7 @@ struct Cell {
 
 	Cell() {
 		block = 0;
-		border
+		border = 0;
 		contourVisited = 0;
 	}
 };

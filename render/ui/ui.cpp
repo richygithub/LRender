@@ -64,6 +64,7 @@ void UI::updateCamera() {
 	ImGui::ColorEdit3("clear color", (float*)&camera._clearColor);
 	ImGui::InputFloat3("camera position",(float*)&camera._position);
 	ImGui::InputFloat3("camera lookAt",(float*)&camera._lookAt);
+	ImGui::SliderFloat("speed", &camera._moveSpeed, 1.0f, 10.f);
 
 	//load
 	if (ImGui::CollapsingHeader("Objects")) {
