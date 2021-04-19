@@ -1,6 +1,6 @@
 #pragma once
 #include "glm\glm.hpp"
-class Camera {
+struct Camera {
 
 	glm::vec3 _position;
 	glm::vec3 _lookAt;
@@ -10,9 +10,11 @@ class Camera {
 	float _aspect;
 	float _near;
 	float _far;
+	float _moveSpeed;
 	glm::vec4 _clearColor;
 	glm::mat4 _matrixV;
 	glm::mat4 _matrixP;
+
 	friend class UI;
 public:
 

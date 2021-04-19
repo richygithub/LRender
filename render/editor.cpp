@@ -27,6 +27,7 @@ using namespace glm;
 
 #include "ui\ui.h"
 #include "scene\scene.h"
+#include "input\input.h"
 
 int main( void )
 {
@@ -122,6 +123,8 @@ int main( void )
 	UI ui;
 	ui.init(window,&scene);
 
+	InputSystem input;
+	input.init(window, &scene);
 
 
 	do{
@@ -151,6 +154,8 @@ int main( void )
 		//glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
 
 		//glDisableVertexAttribArray(0);
+
+		input.update();
 		
 		scene.update();
 
