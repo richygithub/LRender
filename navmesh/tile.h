@@ -15,7 +15,7 @@ struct Cell {
 
 	Cell() {
 		block = 0;
-		border
+		border = 0;
 		contourVisited = 0;
 	}
 };
@@ -24,6 +24,9 @@ struct Tile {
 	unsigned int x;
 	unsigned int y;
 	unsigned int size;
+	float minx;
+	float miny;
+	float cellsize;
 	Cell* cells;
 	uint16_t maxDist;
 	uint16_t* dist;

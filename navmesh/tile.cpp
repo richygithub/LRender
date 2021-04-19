@@ -411,13 +411,14 @@ void Tile::buildContour() {
 	}
 
 }
-void Tile::walkContour(int x,int y) {
+void Tile::walkContour(int cx,int cy) {
 
 	int fdir = 1;
 
 	vector<vec3> contours;
 
-	int idx= x + y * size;
+
+	int idx= cx + cy * size;
 	cells[idx].contourVisited = 1;
 
 	for (int sdir = fdir-1; sdir < 4; sdir++) {
