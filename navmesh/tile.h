@@ -7,7 +7,7 @@
 #pragma once
 
 #include "glm\glm.hpp"
-
+#include <vector>
 struct Cell {
 	unsigned char block:1;
 	unsigned char border:4;  //ÊÇ·ñÎª±ß½ç
@@ -32,8 +32,11 @@ struct Tile {
 	uint16_t* dist;
 	uint16_t* region;
 
+	std::vector< std::vector<glm::vec3> > rawCountours;
+	std::vector< std::vector<glm::vec3> > simpleCountours;
 
-	void init(int x,int y,int size);
+
+	void init(int x,int y,int size,float cellsize,float minx,float miny);
 	void setCell(int x, int y);
 	Tile() :cells(nullptr), dist(nullptr),region(nullptr){};
 
@@ -47,7 +50,8 @@ struct Tile {
 	void buildSimpleRegion();
 	void buildContour();
 	
-	void walkContour(int x,int y);
+	void walkContour(int cx, int cy, int fdir, std::vector<glm::vec3>& contours);
+	void simplifyContour(float maxError);
 	void calcBorder();
 
 

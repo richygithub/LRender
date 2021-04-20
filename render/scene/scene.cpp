@@ -228,14 +228,19 @@ void Scene::renderQuads(const std::vector< glm::vec3 >& verts) {
 
 }
 
-void Scene::renderLines(const std::vector< glm::vec3 >& verts) {
+void Scene::renderLines(const std::vector< glm::vec3 >& verts, GLenum lineType, glm::vec4 color ) {
 	GLuint programId = Shader::getProgram("line");
 	glUseProgram(programId);
 	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
 
+	GLuint colorId = glGetUniformLocation(programId, "color");
+
+
 	glm::mat4 MVP = _matrixVP;
 
 	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
+
+	glUniform4fv(colorId, 1, (float*)&color);
 
 	GLuint vao;
 	GLuint vbo;
@@ -263,7 +268,7 @@ void Scene::renderLines(const std::vector< glm::vec3 >& verts) {
 		(void*)0            // array buffer offset
 	);
 
-	glDrawArrays(GL_LINES, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
+	glDrawArrays(lineType, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
 	glDisableVertexAttribArray(0);
 
 	glDeleteVertexArrays(1, &vao);

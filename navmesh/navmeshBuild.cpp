@@ -274,10 +274,17 @@ void NavmeshBuilder::build(	Cfg cfg) {
 	_height = ceil( (_max.z - _min.z ) / (_tileSize * _cellSize) );
 
 	_tiles = new Tile[_width * _height];
-	for (int x = 0; x < _width; x++) {
-		for (int y = 0; y < _height; y++) {
+	
+	for (int y = 0; y < _height; y++) {
+		for (int x = 0; x < _width; x++) {
+
 			int idx = y * _width + x;
-			_tiles[idx].init(x, y, _tileSize);
+
+			float minx = _min.x + x * _tileSize * _cellSize;
+			float miny = _min.z + y * _tileSize * _cellSize;
+
+
+			_tiles[idx].init(x, y, _tileSize,_cellSize,minx,miny);
 		}
 	}
 
@@ -294,6 +301,10 @@ void NavmeshBuilder::build(	Cfg cfg) {
 			_tiles[idx].calcDistField();
 			_tiles[idx].calcBorder();
 			//_tiles[idx].buildRegion();
+			_tiles[idx].buildContour();
+			_tiles[idx].simplifyContour(cfg.lineError);
+
+
 		}
 	}
 

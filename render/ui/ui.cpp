@@ -195,6 +195,7 @@ const vec4 black = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
 
 
+static vec4 rc[] = { red,green,blue,yellow,cyan,purple,white };
 
 
 
@@ -208,7 +209,6 @@ void showTileRegion(Scene* scene) {
 	vector<vec3> verts;
 	vector<vec4> colors;
 
-	static vec4 rc[] = { red,green,blue,yellow,cyan };
 
 	for (int x = 0; x < gMeshBuilder._width; x++) {
 		for (int y = 0; y < gMeshBuilder._height; y++) {
@@ -292,15 +292,26 @@ void showTileRasterize(Scene* scene) {
 						//int idx = cx + cy * tile.size;
 						//if (tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border !=0 ) 
 						//if(tile.cells[cx + cy * tile.size].border != 0)
-						bool b1 = tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border != 0;
-						bool b2 = (cx == 0 || cy == 0 || cx == tile.size - 1 || cy == tile.size - 1);
+						//bool b1 = tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border != 0;
+						//bool b2 = (cx == 0 || cy == 0 || cx == tile.size - 1 || cy == tile.size - 1);
 
-						//if(cx==0||cy==0||cx==tile.size-1||cy==tile.size-1)
-						if (b2 == true && b1 == false) {
-							int x = 0;
-						}
-						if (b1)
+						////if(cx==0||cy==0||cx==tile.size-1||cy==tile.size-1)
+						//if (b2 == true && b1 == false) {
+						//	int x = 0;
+						//}
+						vec4 c = blue;
+						auto& cell = tile.cells[cx + cy * tile.size];
+						if (cell.block != 0 && cell.border != 0) {
+							c = yellow;
+						}else if (cell.border != 0)
 						{
+							//auto c = blue;
+						}else if (cell.block != 0) {
+							c = red;
+						}else
+						{
+							continue;
+						}
 							//push
 							float minx = cx * cellSize + offsetX;
 							float miny = cy * cellSize + offsetY;
@@ -317,8 +328,7 @@ void showTileRasterize(Scene* scene) {
 							//auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
 							float depth = tile.dist[cx + cy * tile.size]/(float)tile.maxDist;
 							//auto c = vec4(depth , depth, depth, 1);
-							auto c = blue;
-
+							
 							verts.push_back(v0);
 							verts.push_back(v1);
 							verts.push_back(v2);
@@ -336,7 +346,6 @@ void showTileRasterize(Scene* scene) {
 							colors.push_back(c);
 
 
-						}
 					}
 				}
 			}
@@ -345,6 +354,33 @@ void showTileRasterize(Scene* scene) {
 	scene->renderTris(verts,colors);
 }
 
+void showTileContour(Scene* scene) {
+	std::vector< glm::vec3 > verts;
+	//c = rc[rid % (sizeof(rc) / sizeof(rc[0]))];
+
+	int rcLen = sizeof(rc) / sizeof(rc[0]);
+	for (int x = 0; x < gMeshBuilder._width; x++) {
+		for (int y = 0; y < gMeshBuilder._height; y++) {
+			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+
+			int idx = 0;
+			//for (auto& contour : tile.rawCountours) 
+			for (auto& contour : tile.simpleCountours) 
+			{
+
+				auto c = rc[(idx++) % rcLen];
+				scene->renderLines(contour,GL_LINE_LOOP,c);
+			}
+			//for (auto& contour : tile.simpleCountours) {
+
+			//	//auto c = rc[(idx++) % rcLen];
+			//	scene->renderLines(contour, GL_LINE_LOOP, white);
+			//}
+
+		}
+	}
+
+}
 void showNavmesh(Scene*scene) {
 
 	ImGui::InputInt("TileSize", &gBuildCfg.tileSize);
@@ -356,6 +392,7 @@ void showNavmesh(Scene*scene) {
 	if (ImGui::SliderFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2)) {
 
 	}
+	ImGui::SliderFloat("Line Error", &gBuildCfg.lineError, 0, 2);
 	//std::vector<glm::vec3> quads;
 	////quads.push_back(vec3(6.6, 0.2, 0));
 	////quads.push_back(vec3(3.6, 0.2, 0));
@@ -413,7 +450,7 @@ void showNavmesh(Scene*scene) {
 			}
 		}
 		gMeshBuilder.build(gBuildCfg);
-		gMeshBuilder.debug();
+		//gMeshBuilder.debug();
 		//for (auto& v : gMeshBuilder._debug) {
 		//	scene->addMesh(v);
 		//}
@@ -430,6 +467,16 @@ void showNavmesh(Scene*scene) {
 	if (showRasterize) {
 		showTileRasterize(scene);
 	}
+
+
+	static bool showContour;
+	ImGui::Checkbox("show Contour", &showContour);
+
+	if (showContour) {
+		showTileContour(scene);
+	}
+
+
 	
 	showTileBorder(scene);
 

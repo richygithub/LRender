@@ -62,7 +62,7 @@ void InputSystem::update() {
 	if (rightButtonDown) {
 
 		//printf("move %.3f %.3f --> %.3f,%3.f\n",xpos,ypos,xpos - preX,ypos - preY);
-		vec3 diff = vec3(xpos - preX, ypos - preY, 0);
+		vec3 diff = vec3(xpos - preX, -(ypos - preY), 0);
 		if (length(diff) > 0) {
 			diff = normalize(diff);
 		}
@@ -76,7 +76,7 @@ void InputSystem::update() {
 
 		//auto wpos = glm::unProject(glm::vec3(xpos, ypos, 0), matrixV, matrixP, viewport);
 
-		camera._lookAt += diff * camera._moveSpeed;
+		camera._lookAt += diff;// *camera._moveSpeed;
 	}
 
 	preX = xpos;
