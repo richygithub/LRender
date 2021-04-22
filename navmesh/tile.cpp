@@ -407,24 +407,34 @@ void Tile::buildContour() {
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
 			int cidx = x + y * size;
-			if (cells[cidx].border != 0 && cells[cidx].contourVisited == 0) {
+			if (cells[cidx].border != 0 && cells[cidx].contourVisited != cells[cidx].border ) {
 				//
 
 				vector<vec3> contours;
 				int fdir = 0;
 				for (; fdir < 4; fdir++) {
-					if ((cells[cidx].border & (1 << fdir) ) != 0) {
+					if ((cells[cidx].border & (1 << fdir) ) != 0  &&
+						( cells[cidx].contourVisited & (1 << fdir) ) ==0  
+						) {
 						break;
 					}
 				}
-				walkContour(x,y,(fdir+1)&0x3, contours);
-				rawCountours.push_back(contours);
+				if (fdir < 4) {
+					walkContour(x,y,(fdir+1)&0x3, contours);
+					rawCountours.push_back(contours);
+				}
 			}
 		}
 
 	}
+}
+
+void Tile::buildPolyMesh() {
+
 
 }
+
+
 void Tile::walkContour(int cx,int cy,int fdir, vector<vec3>& contours) {
 
 
@@ -438,21 +448,29 @@ void Tile::walkContour(int cx,int cy,int fdir, vector<vec3>& contours) {
 	vec2 st(minx + cx*cellsize ,miny + cy*cellsize);
 
 	int idx= cx + cy * size;
-	if (cells[idx].contourVisited == 1 && cells[idx].border !=0) {
-		//
-		int sdir = (fdir + 3) & 0x3;
-		vec2 p = st + offset[sdir] * cellsize;
-		contours.push_back( vec3(p.x, 0.0, p.y) );
-	
-		return;
-	}
-	cells[idx].contourVisited = 1;
+	int sdir = (fdir + 3) & 0x3;
+	//此判断需保证walk没有回头路，否则需要记录每个方向是否已经访问了。
+	//if (cells[idx].contourVisited == 1 && ( cells[idx].border  !=0 ) ) {
+	//	//
+	//	int sdir = (fdir + 3) & 0x3;
+	//	vec2 p = st + offset[sdir] * cellsize;
+	//	contours.push_back( vec3(p.x, 0.0, p.y) );
+	//
+	//	return;
+	//}
+	//cells[idx].contourVisited = 1;
 
 
-	for (int sdir = (fdir +3 )&0x3 , count = 0; count<4 ; count++,sdir=(sdir+1)&0x3) {
+	for (int count = 0; count<4 ; count++,sdir=(sdir+1)&0x3) {
+		if ((cells[idx].contourVisited & (1 << sdir)) != 0) {
+			return;
+		}
+
+
 		if ((cells[idx].border & (1 << sdir)) != 0) {
 			//
 			vec2 p = st + offset[sdir] * cellsize;
+			cells[idx].contourVisited |= (1<<sdir);
 			contours.push_back( vec3(p.x, 0.0, p.y) );
 			
 		}
@@ -583,6 +601,39 @@ void Tile::simplifyContour(float maxError) {
 	}
 }
 
+void updateBlockStatus(Cell*cells,int size ,int x,int y,int conn) {
+
+	cells[x + y * size].block = 1;
+	cells[x + y * size].border = 0;
+
+	if (conn >= 0) {
+		x = x + offset_x[conn];
+		y = y + offset_y[conn];
+		cells[x + y * size].border |= (1 << ((conn + 2) & 0x3));
+
+		conn = -1;
+		int count = 0;
+		for (int dir = 0; dir < 4; dir++) {
+			int nx = x + offset_x[dir];
+			int ny = y + offset_y[dir];
+			if ((nx < 0 || ny < 0 || nx >= size || ny >= size) ||
+				cells[nx + ny * size].block == 1
+				)
+			{
+				count++;
+			}
+			else {
+				conn = dir;
+			}
+		}
+		if (count >= 3) {
+
+			updateBlockStatus(cells, size, x, y, conn);
+		}
+	}
+
+
+}
 void Tile::calcBorder() {
 	if (cells == nullptr)
 		return;
@@ -591,6 +642,8 @@ void Tile::calcBorder() {
 			int cidx = x + y * size;
 			if (cells[cidx].block == 1)
 				continue;
+			int count = 0;
+			int conn = -1;
 			for (int dir = 0; dir < 4; dir++) {
 				int nx = x + offset_x[dir];
 				int ny = y + offset_y[dir];
@@ -599,13 +652,50 @@ void Tile::calcBorder() {
 					) 
 				{
 					cells[cidx].border |= (1 << dir);
+					count++;
+				}
+				else {
+					conn = dir;
 				}
 			}
+			if (count >= 3) {
+				updateBlockStatus(cells, size, x, y, conn);
+				//cells[cidx].block = 1;
+				//cells[cidx].border = 0;
+				////修改相邻块
+
+				//if (count == 3) {
+				//	int nx = x + offset_x[conn];
+				//	int ny = y + offset_y[conn];
+				//	cells[nx + ny * size].border |= (1 << ( (conn+2)&0x3 ) );
+				//}
+				////check
+				//for (int dir = 0; dir < 4; dir++) {
+				//	int nx = x + offset_x[dir];
+				//	int ny = y + offset_y[dir];
+				//	if ((nx < 0 || ny < 0 || nx >= size || ny >= size) ||
+				//		cells[nx + ny * size].block == 1
+				//		)
+				//	{
+				//		cells[cidx].border |= (1 << dir);
+				//		count++;
+				//	}
+				//	else {
+				//		conn = dir;
+				//	}
+				//}
+
+			}
+
 		}
 	}
 
 }
-
+void Tile::mergeSmallBlock() {
+	if (cells == nullptr)
+		return;
+	
+}
 void Tile::buildRegion() {
 	if (cells == nullptr)
 		return;

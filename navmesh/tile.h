@@ -9,9 +9,9 @@
 #include "glm\glm.hpp"
 #include <vector>
 struct Cell {
-	unsigned char block:1;
-	unsigned char border:4;  //是否为边界
-	unsigned char contourVisited:1;
+	unsigned short block:1;
+	unsigned short border:4;  //是否为边界
+	unsigned short contourVisited:4;
 
 	Cell() {
 		block = 0;
@@ -47,8 +47,10 @@ struct Tile {
 	bool isBoader(int x,int y);
 
 	void buildRegion();
+	void mergeSmallBlock();
 	void buildSimpleRegion();
 	void buildContour();
+	void buildPolyMesh();
 	
 	void walkContour(int cx, int cy, int fdir, std::vector<glm::vec3>& contours);
 	void simplifyContour(float maxError);

@@ -14,8 +14,8 @@ struct Cfg {
 	int tileSize;
 	float cellSize;
 	float gridSize;
-	float lineError;
-	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(0.1f) {}
+	int lineError;
+	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2) {}
 };
 extern Cfg gBuildCfg;
 struct NavmeshBuilder {

@@ -392,7 +392,7 @@ void showNavmesh(Scene*scene) {
 	if (ImGui::SliderFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2)) {
 
 	}
-	ImGui::SliderFloat("Line Error", &gBuildCfg.lineError, 0, 2);
+	ImGui::SliderInt("Line Error", &gBuildCfg.lineError, 0, 10);
 	//std::vector<glm::vec3> quads;
 	////quads.push_back(vec3(6.6, 0.2, 0));
 	////quads.push_back(vec3(3.6, 0.2, 0));

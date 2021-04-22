@@ -302,7 +302,7 @@ void NavmeshBuilder::build(	Cfg cfg) {
 			_tiles[idx].calcBorder();
 			//_tiles[idx].buildRegion();
 			_tiles[idx].buildContour();
-			_tiles[idx].simplifyContour(cfg.lineError);
+			_tiles[idx].simplifyContour(cfg.lineError*cfg.cellSize);
 
 
 		}
