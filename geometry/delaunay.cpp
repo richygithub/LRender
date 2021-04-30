@@ -47,7 +47,6 @@ int del_init_tri(delaunay_s& del, int start, Delaunay2d_t& output) {
 
 
 	auto& edges = output.edges;
-	auto& faces = output.faces;
 	auto& verts = output.verts;
 	//ccw
 	int seq[3];
@@ -66,10 +65,6 @@ int del_init_tri(delaunay_s& del, int start, Delaunay2d_t& output) {
 
 
 	int id = edges.size();
-	Face f;
-	f.id = faces.size();
-	f.inc = id;
-	faces.push_back(f);
 
 
 	Edge es[3];
@@ -78,8 +73,7 @@ int del_init_tri(delaunay_s& del, int start, Delaunay2d_t& output) {
 	for (int idx = 0; idx < 3; idx++) {
 		es[idx].orig = seq[idx];
 		es[idx].id = id + idx;
-		verts[seq[idx]].id = seq[idx];
-		//verts[seq[idx]].inc = es[idx].id;
+		verts[seq[idx]].inc = es[idx].id;
 	}
 	id += 3;
 	//cw ³õÊ¼»¯
@@ -129,8 +123,7 @@ int del_init_tri(delaunay_s& del, int start, Delaunay2d_t& output) {
 	for (int idx = 0; idx < 2; idx++) {
 		e[idx].next = e[idx].prev = e[idx].id;
 		e[idx].twin = e[(idx + 1)%2].id;
-		verts[start + idx].id = start + idx;
-		//verts[start + idx].inc = e[idx].id;
+		verts[start + idx].inc = e[idx].id;
 	}
 
 
@@ -157,10 +150,15 @@ Rel relation_point_edge(int eid,int pid,Delaunay2d_t& output) {
 	return relation_point_seg(a, b, p);
 }
 
-void del_remove_edge(Edge base, vector<Edge>& edges) {
+void del_remove_edge(Edge base, vector<Edge>& edges, vector<Vertex>& verts ) {
 	//self
 	edges[base.next].prev = base.prev;
 	edges[base.prev].next = base.next;
+	if (verts[base.orig].inc == base.id) {
+		//update
+		verts[base.orig].inc = base.next;
+	}
+
 	//del
 	edges[base.id].id = -1;
 
@@ -168,6 +166,13 @@ void del_remove_edge(Edge base, vector<Edge>& edges) {
 	//twin;
 	edges[base.next].prev = base.prev;
 	edges[base.prev].next = base.next;
+
+	if (verts[base.orig].inc == base.id) {
+		//update
+		verts[base.orig].inc = base.next;
+	}
+
+
 	//del
 	edges[base.id].id = -1;
 
@@ -175,7 +180,7 @@ void del_remove_edge(Edge base, vector<Edge>& edges) {
 }
 
 
-Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points) {
+Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points,vector<Vertex>& verts) {
 
 	//base.orig
 	auto& pl = points[ base.orig];
@@ -190,7 +195,7 @@ Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points) {
 		while ( p1 != p2 && relation_point_seg(pl, pr, points[p2]) == Rel::LEFT && inCircle2D(pl,pr,points[p1],points[p2]) == Rel::INSIDE ) {
 
 			//remove 
-			del_remove_edge(s, edges);
+			del_remove_edge(s, edges,verts);
 
 			//verts
 
@@ -207,7 +212,7 @@ Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points) {
 
 }
 
-Edge del_link_right(Edge base, vector<Edge>& edges, vector<vec3>& points) {
+Edge del_link_right(Edge base, vector<Edge>& edges, vector<vec3>& points, vector<Vertex>& verts) {
 	//base.orig
 	auto& pl = points[base.orig];
 	auto& pr = points[edges[base.twin].orig];
@@ -221,7 +226,7 @@ Edge del_link_right(Edge base, vector<Edge>& edges, vector<vec3>& points) {
 		while (p1 != p2 && relation_point_seg(pl, pr, points[p2]) == Rel::LEFT && inCircle2D(pl, pr, points[p1], points[p2]) == Rel::INSIDE) {
 
 			//remove 
-			del_remove_edge(s, edges);
+			del_remove_edge(s, edges,verts);
 			s = edges[s.prev];
 			p1 = edges[s.twin].orig;
 			p2 = edges[edges[s.prev].twin].orig;
@@ -249,11 +254,11 @@ void insert_cw(const Edge& e,Edge& newEdge,vector<Edge>& edges) {
 }
 
 
-int del_valid_link(int eid, vector<Edge>& edges, vector<vec3>& points, delaunay_s& left, delaunay_s& right) {
+int del_valid_link(int eid, vector<Edge>& edges, vector<vec3>& points,vector<Vertex>& verts, delaunay_s& left, delaunay_s& right) {
 
-	Edge ll = del_link_left( edges[eid], edges, points);
+	Edge ll = del_link_left( edges[eid], edges, points,verts);
 
-	Edge rr = del_link_right(edges[eid], edges, points);
+	Edge rr = del_link_right(edges[eid], edges, points,verts);
 
 	if (ll.id == eid && ll.id == rr.id) {
 
@@ -323,7 +328,7 @@ static void del_merge(delaunay_s& del, delaunay_s& left, delaunay_s& right, Dela
 
 	while (  relation_point_edge(base_e,pl,output)== Rel::LEFT||
 		relation_point_edge(base_e, pr, output) == Rel::LEFT) {
-		int lr = del_valid_link(base_e, edges, points,left,right);
+		int lr = del_valid_link(base_e, edges, points, output.verts,left,right);
 		if (lr == base_e) {
 			break;
 		}

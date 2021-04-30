@@ -15,6 +15,7 @@
 #include "navmeshBuild.h"
 #include <time.h>
 #include "geometry\delaunay.h"
+#include <algorithm>
 
 using namespace glm;
 using namespace std;
@@ -522,7 +523,20 @@ void showNavmesh(Scene*scene) {
 	//showTileBorder(scene);
 
 }
-
+bool vertCmp1(vec3 a, vec3 b) {
+	if (a.x < b.x) {
+		return true;
+	}
+	else if (a.x > b.x) {
+		return false;
+	}
+	else if (a.z < b.z) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
 void showGeometri(Scene* scene) {
 	static int vertNum=0;
 	ImGui::InputInt("vertex num", &vertNum);
@@ -550,7 +564,7 @@ void showGeometri(Scene* scene) {
 			rverts.push_back( vec3(x, 0, z));
 
 		}
-
+		//sort(rverts.begin(), rverts.end(), vertCmp1);
 		//vector<vec3> tmp;
 		//for (int idx = 1438; idx <= 1453; idx++) {
 		//	tmp.push_back(rverts[idx]);
@@ -559,10 +573,26 @@ void showGeometri(Scene* scene) {
 		//for (int idx = 0; idx < tmp.size(); idx++) {
 		//	rverts.push_back(tmp[idx]);
 		//}
-
-
 		
 	}
+	
+	static vec3 point;
+	ImGui::InputFloat3("vert pos", (float*)&point);
+	if (ImGui::Button("init vertex")) {
+		rverts.clear();
+		rverts.push_back(vec3(-5,0,5));
+		rverts.push_back(vec3(-5,0,0));
+		rverts.push_back(vec3(-5,0,-5));
+		rverts.push_back(vec3(5,0,5));
+		rverts.push_back(vec3(5,0,0));
+
+
+	}
+
+	if (ImGui::Button("add vertex")) {
+		rverts.push_back(point);
+	}
+
 	if (rverts.size() > 0) {
 		scene->renderPoints(rverts, 4, yellow);
 	}
@@ -577,6 +607,12 @@ void showGeometri(Scene* scene) {
 
 		delaunay2d(rverts,del);
 		tris = traveral_delaunay(rverts, del.edges, del.faces);
+
+		for (auto& vert : del.verts) {
+			assert(vert.inc != -1);
+			assert(del.edges[vert.inc].id != -1);
+
+		}
 	}
 	if (tris.size() > 0) {
 		//scene->renderTris(rverts, tris);

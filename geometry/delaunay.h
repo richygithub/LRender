@@ -19,8 +19,8 @@ namespace DCEL{
 	};
 
 	struct Vertex {
-		int id;  // vertex id 
 		int inc; // one edge from vertex
+		Vertex():inc(-1){}
 	};
 
 	struct Face {
