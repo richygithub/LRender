@@ -8,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <list>
+
 using namespace glm;
 using namespace std;
 
@@ -410,7 +411,7 @@ void Tile::buildContour() {
 			if (cells[cidx].border != 0 && cells[cidx].contourVisited != cells[cidx].border ) {
 				//
 
-				vector<vec3> contours;
+				vector<ivec3> contours;
 				int fdir = 0;
 				for (; fdir < 4; fdir++) {
 					if ((cells[cidx].border & (1 << fdir) ) != 0  &&
@@ -429,21 +430,26 @@ void Tile::buildContour() {
 	}
 }
 
+void triangulation(vector<ivec3>& verts ) {
+
+
+}
+
 void Tile::buildPolyMesh() {
 
 
 }
 
 
-void Tile::walkContour(int cx,int cy,int fdir, vector<vec3>& contours) {
+void Tile::walkContour(int cx,int cy,int fdir, vector<ivec3>& contours) {
 
 
 
-	static vec2 offset[] = {
-		vec2(0,0),
-		vec2(0,1),
-		vec2(1,1),
-		vec2(1,0)
+	static ivec2 offset[] = {
+		ivec2(0,0),
+		ivec2(0,1),
+		ivec2(1,1),
+		ivec2(1,0)
 	};
 	vec2 st(minx + cx*cellsize ,miny + cy*cellsize);
 
@@ -469,9 +475,11 @@ void Tile::walkContour(int cx,int cy,int fdir, vector<vec3>& contours) {
 
 		if ((cells[idx].border & (1 << sdir)) != 0) {
 			//
-			vec2 p = st + offset[sdir] * cellsize;
+			//vec2 p = st + offset[sdir] * cellsize;
 			cells[idx].contourVisited |= (1<<sdir);
-			contours.push_back( vec3(p.x, 0.0, p.y) );
+			//contours.push_back( vec3(p.x, 0.0, p.y) );
+			auto v = ivec2(cx, cy) + offset[sdir];
+			contours.push_back( ivec3(  v.x, 0,v.y ) );
 			
 		}
 		else {
@@ -532,13 +540,16 @@ static float distancePtSeg2D(vec3 p,vec3 a,vec3 b)
 	return dx * dx + dz * dz;
 }
 
-void simplify(const vector<vec3>& verts, list<SimpleVert>&simpleVerts,list<SimpleVert>::iterator st, list<SimpleVert>::iterator end,float maxError ) {
+void simplify(const vector<ivec3>& verts, list<SimpleVert>&simpleVerts,list<SimpleVert>::iterator st, list<SimpleVert>::iterator end,float maxError,int size ) {
 
 	vec3 sVert = verts[st->idx];
 	vec3 eVert = verts[end->idx];
 
 	float maxd = 0;
 	int maxIdx = 0;
+	float keyMaxd = 0;
+	int keyMaxIdx = 0;
+
 	for (int idx = (st->idx+1)%verts.size(); idx != end->idx; idx = (idx + 1)%verts.size() ) {
 
 		float d = distancePtSeg2D(verts[idx], sVert, eVert);
@@ -546,33 +557,67 @@ void simplify(const vector<vec3>& verts, list<SimpleVert>&simpleVerts,list<Simpl
 			maxd = d;
 			maxIdx = idx;
 		}
+		if (verts[idx].x == 0 || verts[idx].z == 0 || verts[idx].x == size || verts[idx].z == size) {
+			if (d > keyMaxd) {
+				keyMaxd = d;
+				keyMaxIdx = idx;
+			}
+
+		}
 	}
-	if (maxd > maxError * maxError) {
+	if (keyMaxd > 0) {
+		auto it = simpleVerts.insert(end, SimpleVert(keyMaxIdx));
+
+		simplify(verts, simpleVerts, st, it, maxError, size);
+		simplify(verts, simpleVerts, it, end, maxError, size);
+
+	}else if (maxd > maxError * maxError) {
 		//
 		auto it = simpleVerts.insert(end, SimpleVert(maxIdx));
 
-		simplify(verts, simpleVerts, st, it, maxError);
-		simplify(verts, simpleVerts, it, end, maxError);
+		simplify(verts, simpleVerts, st, it, maxError,size);
+		simplify(verts, simpleVerts, it, end, maxError,size);
 
 
 	}
 
 }
+void Tile::mergeHoles() {
+	if (simpleCountours.size() > 1) {
 
+
+
+	}
+}
 void Tile::simplifyContour(float maxError) {
 	simpleCountours.clear();
+	showCountours.clear();
+
+	//for (auto& verts : rawCountours) {
+	//	vector<vec3> newverts;
+	//	newverts.reserve(verts.size());
+	//	for (auto& cell : verts) {
+	//		newverts.push_back(vec3(minx + cell.x * cellsize, 0, miny + cell.y * cellsize));
+	//	}
+
+
+
+
+	//	simpleCountours.push_back(newverts);
+	//}
+	
 	for (auto& verts : rawCountours) {
-		vec3 ll = verts[0];
-		vec3 ur = verts[0];
+		ivec3 ll = verts[0];
+		ivec3 ur = verts[0];
 		int lidx = 0;
 		int ridx = 0;
 		for (int idx = 1; idx < verts.size(); idx++) {
-			const vec3& vert = verts[idx];
+			const ivec3& vert = verts[idx];
 			if (vert.x < ll.x || (vert.x == ll.x && vert.z < ll.z)) {
 				ll = vert;
 				lidx = idx;
 			}
-			if (vert.x > ur.x || (vert.x == ur.x && vert.z > ll.z)) {
+			if (vert.x > ur.x || (vert.x == ur.x && vert.z > ur.z)) {
 				ur = vert;
 				ridx = idx;
 			}
@@ -586,18 +631,25 @@ void Tile::simplifyContour(float maxError) {
 
 		auto et = st;
 
-		simplify(verts, lists,st,++et, maxError);
+		simplify(verts, lists,st,++et, maxError,size);
 
 		st = et;
-		simplify(verts, lists,st,++et, maxError);
+		simplify(verts, lists,st,++et, maxError,size);
 
 		vector<vec3> newverts;
+		vector<ivec3> grids;
+
+
 		for (auto it = lists.begin(); it != lists.end(); it++)
 		{
-			newverts.push_back(verts[it->idx]);
+			auto& v = verts[it->idx];
+			grids.push_back(v);
+			newverts.push_back( vec3(minx+v.x*cellsize,0,miny+v.z*cellsize));
 		}
 		newverts.pop_back();
-		simpleCountours.push_back(newverts);
+		grids.pop_back();
+		simpleCountours.push_back(grids);
+		showCountours.push_back(newverts);
 	}
 }
 

@@ -13,6 +13,8 @@
 #include "glm\glm.hpp"
 #include "glm\gtc\matrix_transform.hpp"
 #include "navmeshBuild.h"
+#include <time.h>
+#include "geometry\delaunay.h"
 
 using namespace glm;
 using namespace std;
@@ -33,6 +35,8 @@ int mainPlaneId = -1;
 void showNavmesh(Scene* scene);
 void showObjects(Scene* scene);
 void showTileRasterize(Scene* scene);
+void showGeometri(Scene* scene);
+void showGround(Scene* scene);
 
 void UI::updateCamera() {
 
@@ -74,7 +78,13 @@ void UI::updateCamera() {
 		showNavmesh(_scene);
 	}
 
+	if (ImGui::CollapsingHeader("Geo")) {
+		showGeometri(_scene);
+	}
 
+
+
+	showGround(_scene);
 
 	ImGui::End();
 
@@ -179,6 +189,37 @@ void showTileBorder(Scene*scene) {
 	}
 	scene->renderLines(verts);
 }
+
+
+void showGround(Scene* scene) {
+	std::vector< glm::vec3 > verts;	
+
+	int width = 10;
+	int step = 10;
+	int minx = -width * 10;
+	int maxx = width * 10;
+
+	int height = width;
+	int minz = minx;
+	int maxz = maxx;
+
+	for (int x = -width; x <= width; x++) {
+		verts.push_back( glm::vec3(x*step,0,minz  ));
+		verts.push_back( glm::vec3(x*step,0,maxz));
+
+	}
+
+	for (int z = -height; z <= height; z++) {
+		verts.push_back(glm::vec3(minx,0,z*step));
+		verts.push_back(glm::vec3(maxx,0,z*step));
+
+	}
+	scene->renderLines(verts);
+}
+
+
+
+
 const vec4 red = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 const vec4 green = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 const vec4 blue = vec4(0.0f, 0.0f, 1.0f, 1.0f);
@@ -365,7 +406,7 @@ void showTileContour(Scene* scene) {
 
 			int idx = 0;
 			//for (auto& contour : tile.rawCountours) 
-			for (auto& contour : tile.simpleCountours) 
+			for (auto& contour : tile.showCountours)
 			{
 
 				auto c = rc[(idx++) % rcLen];
@@ -478,6 +519,70 @@ void showNavmesh(Scene*scene) {
 
 
 	
-	showTileBorder(scene);
+	//showTileBorder(scene);
 
 }
+
+void showGeometri(Scene* scene) {
+	static int vertNum=0;
+	ImGui::InputInt("vertex num", &vertNum);
+
+	static int areaSize = 20;
+	ImGui::InputInt("area size", &areaSize);
+
+	static vector<vec3> rverts;
+	static Delaunay2d_t del(rverts);
+	static vector<int> tris;
+
+	if (ImGui::Button("random vertex")) {
+		time_t t;
+		//srand((unsigned)time(&t));
+
+		tris.clear();
+		rverts.clear();
+		for (int idx = 0; idx < vertNum; idx++) {
+			float random = ((float)rand()) / (float)RAND_MAX;
+			float x = -areaSize + areaSize * 2 * random;
+
+			random = ((float)rand()) / (float)RAND_MAX;
+			float z = -areaSize + areaSize * 2 * random;
+			
+			rverts.push_back( vec3(x, 0, z));
+
+		}
+
+		//vector<vec3> tmp;
+		//for (int idx = 1438; idx <= 1453; idx++) {
+		//	tmp.push_back(rverts[idx]);
+		//}
+		//rverts.clear();
+		//for (int idx = 0; idx < tmp.size(); idx++) {
+		//	rverts.push_back(tmp[idx]);
+		//}
+
+
+		
+	}
+	if (rverts.size() > 0) {
+		scene->renderPoints(rverts, 4, yellow);
+	}
+
+
+
+	if (ImGui::Button("triangulation")) {
+		del.clear();
+		tris.clear();
+
+
+
+		delaunay2d(rverts,del);
+		tris = traveral_delaunay(rverts, del.edges, del.faces);
+	}
+	if (tris.size() > 0) {
+		//scene->renderTris(rverts, tris);
+		scene->renderTrisWire(rverts, tris, GL_LINES, yellow);
+	}
+}
+
+
+

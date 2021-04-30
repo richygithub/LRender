@@ -32,8 +32,10 @@ struct Tile {
 	uint16_t* dist;
 	uint16_t* region;
 
-	std::vector< std::vector<glm::vec3> > rawCountours;
-	std::vector< std::vector<glm::vec3> > simpleCountours;
+	std::vector< std::vector<glm::ivec3> > rawCountours;
+	std::vector< std::vector<glm::ivec3> > simpleCountours;
+	std::vector< std::vector<glm::vec3> > showCountours;
+
 
 
 	void init(int x,int y,int size,float cellsize,float minx,float miny);
@@ -52,8 +54,10 @@ struct Tile {
 	void buildContour();
 	void buildPolyMesh();
 	
-	void walkContour(int cx, int cy, int fdir, std::vector<glm::vec3>& contours);
+	void walkContour(int cx, int cy, int fdir, std::vector<glm::ivec3>& contours);
 	void simplifyContour(float maxError);
+	void mergeHoles();
+
 	void calcBorder();
 
 

@@ -28,9 +28,16 @@ private:
 
 public:
 
+
+	void renderPoints(const std::vector< glm::vec3 >& verts, float size, glm::vec4 color = glm::vec4(1, 1, 1, 1));
+
 	void renderLines(const std::vector< glm::vec3 >& verts, GLenum lineType =GL_LINES,glm::vec4 color = glm::vec4(1,1,1,1));
 	void renderQuads(const std::vector< glm::vec3 >& verts);
 	void renderTris(const std::vector<glm::vec3>&verts);
+	void renderTris(const std::vector<glm::vec3>& verts,const std::vector<int>& tris);
+	void renderTrisWire(const std::vector<glm::vec3>& verts,const std::vector<int>& tris, GLenum lineType, glm::vec4 color);
+
+
 	void renderTris(const std::vector<glm::vec3>&verts,const std::vector<glm::vec4>& colors);
 
 

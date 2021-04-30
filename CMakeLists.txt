@@ -8,7 +8,9 @@ find_package(OpenGL REQUIRED)
 
 
 add_subdirectory (external)
+add_subdirectory (geometry)
 add_subdirectory (navmesh)
+
 
 
 include_directories(
@@ -18,6 +20,7 @@ include_directories(
 	imgui/
 	render/
 	navmesh/
+	geometry/
 	.
 )
 

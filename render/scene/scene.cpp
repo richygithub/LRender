@@ -8,6 +8,11 @@
 #include "material\material.h"
 #include "utils\meshLoader.h"
 
+using namespace std;
+using namespace glm;
+
+
+
 
 Scene::Scene() :_seqnum(0) {
 	//init();
@@ -70,10 +75,10 @@ void Scene::init() {
 	//std::string objfile = "res/mesh/unitysimple2.obj";
 
 
-	auto objs = loadObj(objfile);
-	for (auto& obj : objs) {
-		addObject(obj);
-	}
+	//auto objs = loadObj(objfile);
+	//for (auto& obj : objs) {
+	//	addObject(obj);
+	//}
 
 
 }
@@ -141,7 +146,88 @@ void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<gl
 	glDeleteBuffers(1, &vbo);
 	glDeleteBuffers(1, &vcolor);
 }
+void Scene::renderTrisWire(const std::vector<glm::vec3>& verts, const std::vector<int>& tris,  GLenum lineType, glm::vec4 color) {
+	
+	vector<vec3> lines;
+	for (int idx = 0; idx < tris.size(); idx += 3) {
+		auto v0 = verts[tris[idx]];
+		auto v1 = verts[tris[idx+1]];
+		auto v2 = verts[tris[idx+2]];
 
+		lines.push_back(v0);
+		lines.push_back(v1);
+		lines.push_back(v1);
+		lines.push_back(v2);
+		lines.push_back(v2);
+		lines.push_back(v0);
+
+	}
+	renderLines(lines,lineType, color);
+
+
+}
+
+void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<int>& tris) {
+	GLuint programId = Shader::getProgram("tris");
+	glUseProgram(programId);
+	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
+
+	glm::mat4 MVP = _matrixVP;
+
+	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
+
+	GLuint vao;
+	GLuint vbo;
+	GLuint eleId;
+
+
+
+
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verts.size(), verts.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &eleId);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eleId);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, tris.size() * sizeof(idxType), tris.data(), GL_STATIC_DRAW);
+
+
+
+
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+	//glDrawArrays(GL_TRIANGLES, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
+
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eleId);
+	glDrawElements(
+		GL_TRIANGLES,      // mode
+		tris.size(),    // count
+		GL_UNSIGNED_INT,   // type
+		(void*)0           // element array buffer offset
+	);
+
+
+	glDisableVertexAttribArray(0);
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+
+}
 
 void Scene::renderTris(const std::vector<glm::vec3>& verts) {
 	GLuint programId = Shader::getProgram("tris");
@@ -227,7 +313,55 @@ void Scene::renderQuads(const std::vector< glm::vec3 >& verts) {
 	glDeleteBuffers(1, &vbo);
 
 }
+void Scene::renderPoints(const std::vector< glm::vec3 >& verts, float size, glm::vec4 color ) {
+	GLuint programId = Shader::getProgram("line");
+	glUseProgram(programId);
+	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
 
+	GLuint colorId = glGetUniformLocation(programId, "color");
+
+
+	glm::mat4 MVP = _matrixVP;
+
+
+	glPointSize(size);
+	glUniformMatrix4fv(MatrixId, 1, GL_FALSE, &MVP[0][0]);
+
+	glUniform4fv(colorId, 1, (float*)&color);
+
+	GLuint vao;
+	GLuint vbo;
+
+
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verts.size(), verts.data(), GL_STATIC_DRAW);
+
+
+
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+	glDrawArrays(GL_POINTS, 0, verts.size()); // 3 indices starting at 0 -> 1 triangle
+	glDisableVertexAttribArray(0);
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+
+}
 void Scene::renderLines(const std::vector< glm::vec3 >& verts, GLenum lineType, glm::vec4 color ) {
 	GLuint programId = Shader::getProgram("line");
 	glUseProgram(programId);
