@@ -38,6 +38,7 @@ void showObjects(Scene* scene);
 void showTileRasterize(Scene* scene);
 void showGeometri(Scene* scene);
 void showGround(Scene* scene);
+void showTris(Scene* scene);
 
 void UI::updateCamera() {
 
@@ -84,8 +85,7 @@ void UI::updateCamera() {
 	}
 
 
-
-	showGround(_scene);
+	//showGround(_scene);
 
 	ImGui::End();
 
@@ -314,6 +314,26 @@ void showTileRegion(Scene* scene) {
 	scene->renderTris(verts, colors);
 
 }
+
+void showTris(Scene* scene) {
+	for (int x = 0; x < gMeshBuilder._width; x++) {
+		for (int y = 0; y < gMeshBuilder._height; y++) {
+			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+			if (tile.cells != nullptr) {
+
+				auto& tris = tile.tris;
+				auto& verts = tile.verts;
+				vector<vec3> points;
+				for (auto& v : verts) {
+					points.push_back(vec3(tile.minx + v.x * tile.cellsize, 0, tile.miny + v.z * tile.cellsize));
+				}
+				scene->renderTrisWire(points, tris, GL_LINES, green);
+			}
+		}
+	}
+
+}
+
 void showTileRasterize(Scene* scene) {
 	//gMeshBuilder.
 	float cellSize = gMeshBuilder._cellSize;
@@ -450,6 +470,7 @@ void showNavmesh(Scene*scene) {
 	//scene->renderTris(quads);
 
 
+	ImGui::Checkbox("remove holes",&gBuildCfg.removeHoles);
 
 
 
@@ -518,9 +539,16 @@ void showNavmesh(Scene*scene) {
 		showTileContour(scene);
 	}
 
+	static bool bshowTris;
+	ImGui::Checkbox("show tris", &bshowTris);
+
+	if (bshowTris) {
+		showTris(scene);
+	}
+
 
 	
-	//showTileBorder(scene);
+	showTileBorder(scene);
 
 }
 bool vertCmp1(vec3 a, vec3 b) {
@@ -605,6 +633,10 @@ void showGeometri(Scene* scene) {
 
 
 
+		del.verts.reserve(rverts.size());
+		for (int idx = 0; idx < rverts.size(); idx++) {
+			del.verts.push_back(DCEL::Vertex(idx, -1,rverts[idx]));
+		}
 		delaunay2d(rverts,del);
 		tris = traveral_delaunay(rverts, del.edges, del.faces);
 
@@ -614,10 +646,24 @@ void showGeometri(Scene* scene) {
 
 		}
 	}
+	static int edge[2];
+	ImGui::InputInt2("constrain", edge);
+
+	if (ImGui::Button("add constrain")) {
+		addContrainedEdge(edge[0], edge[1], del);
+		for (auto& e : del.edges) {
+			e.face = -1;
+		}
+		tris = traveral_delaunay(rverts, del.edges, del.faces);
+
+	}
+
 	if (tris.size() > 0) {
 		//scene->renderTris(rverts, tris);
 		scene->renderTrisWire(rverts, tris, GL_LINES, yellow);
 	}
+
+
 }
 
 

@@ -15,7 +15,8 @@ struct Cfg {
 	float cellSize;
 	float gridSize;
 	int lineError;
-	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2) {}
+	bool removeHoles;
+	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true){}
 };
 extern Cfg gBuildCfg;
 struct NavmeshBuilder {

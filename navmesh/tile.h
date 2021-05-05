@@ -36,6 +36,11 @@ struct Tile {
 	std::vector< std::vector<glm::ivec3> > simpleCountours;
 	std::vector< std::vector<glm::vec3> > showCountours;
 
+	std::vector<int> tris;
+	std::vector<glm::vec3> verts;
+
+
+
 
 
 	void init(int x,int y,int size,float cellsize,float minx,float miny);
@@ -52,7 +57,7 @@ struct Tile {
 	void mergeSmallBlock();
 	void buildSimpleRegion();
 	void buildContour();
-	void buildPolyMesh();
+	void buildPolyMesh(bool removeHole=true);
 	
 	void walkContour(int cx, int cy, int fdir, std::vector<glm::ivec3>& contours);
 	void simplifyContour(float maxError);

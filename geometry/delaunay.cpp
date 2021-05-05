@@ -25,7 +25,7 @@ struct delaunay_s {
 
 int del_get_lower_tangent(delaunay_s& left, delaunay_s& right, Delaunay2d_t& output);
 
-bool vertCmp(vec3 a,vec3 b) {
+bool pointCmp(vec3 a,vec3 b) {
 	if (a.x < b.x) {
 		return true;
 	}
@@ -36,6 +36,20 @@ bool vertCmp(vec3 a,vec3 b) {
 		return true;
 	}
 	else{
+		return false;
+	}
+}
+bool vertCmp(Vertex a, Vertex b) {
+	if (a.pos.x < b.pos.x) {
+		return true;
+	}
+	else if (a.pos.x > b.pos.x) {
+		return false;
+	}
+	else if (a.pos.z < b.pos.z) {
+		return true;
+	}
+	else {
 		return false;
 	}
 }
@@ -149,6 +163,22 @@ Rel relation_point_edge(int eid,int pid,Delaunay2d_t& output) {
 	auto& b = points[ edges[edge.twin].orig ];
 	return relation_point_seg(a, b, p);
 }
+//void del_add_edge(int p0, int p1, vector<Edge>& edges, vector<Vertex>& verts) {
+//	Edge e0, e1;
+//	e0.id = edges.size();
+//	e1.id = e0.id + 1;
+//
+//	e0.orig = p0;
+//	e0.twin = e1.id;
+//	e1.orig = p1;
+//	e1.twin = 
+//
+//
+//	edges.push_back(e0);
+//	edges.push_back(e1);
+//
+//}
+//	
 
 void del_remove_edge(Edge base, vector<Edge>& edges, vector<Vertex>& verts ) {
 	//self
@@ -433,6 +463,225 @@ int del_get_lower_tangent(delaunay_s& left ,delaunay_s& right, Delaunay2d_t& out
 
 }
 
+int contrainedTri_left(int pl,int pr,Edge se,Delaunay2d_t& del ) {
+	auto& edges = del.edges;
+	auto& points = del.points;
+	auto& verts = del.verts;
+
+	//vector<Edge> stack = {pl, se.orig};
+	vector<Edge> stack = {se};
+
+	Edge next = se;
+
+	int newEdgeId = -1;
+	while (next.orig != pr) {
+		next = edges[edges[next.next].twin];
+
+		if (next.orig == pr) {
+			//退栈
+			while (stack.size()>=1) {
+				Edge prev_e = stack[stack.size() - 1];
+				Edge e0, e1;
+				e0.id = edges.size();
+				e1.id = e0.id + 1;
+				e0.orig = next.orig;
+				e1.orig = edges[prev_e.twin].orig;
+				e0.twin = e1.id;
+				e1.twin = e0.id;
+
+				insert_ccw(next, e0, edges);
+				insert_cw(edges[prev_e.twin], e1, edges);
+
+				edges.push_back(e0);
+				edges.push_back(e1);
+
+				newEdgeId = e1.id;
+
+				stack.pop_back();
+			}
+
+			return newEdgeId;
+		}
+		
+		//不考虑退化共线的情况
+		if (relation_point_seg(points[pl], points[pr], points[next.orig]) == Rel::LEFT) {
+
+
+			Edge prev_e = stack[stack.size()-1];
+
+			//push
+			if (relation_point_edge(prev_e.id, next.orig, del) == Rel::LEFT) {
+				//三角化
+
+				Edge top;
+				do{
+
+
+					Edge e0, e1;
+					e0.id = edges.size();
+					e1.id = e0.id + 1;
+					e0.orig = next.orig;
+					e1.orig = edges[prev_e.twin].orig;
+					e0.twin = e1.id;
+					e1.twin = e0.id;
+
+					insert_ccw(next, e0, edges);
+					insert_cw(edges[prev_e.twin], e1, edges);
+
+					edges.push_back(e0);
+					edges.push_back(e1);
+					stack.pop_back();
+
+					top = e0;
+
+				} while ( stack.size()>0 && relation_point_edge( stack[stack.size()-1].id, top.orig, del) == Rel::LEFT);
+
+				stack.push_back(top);
+
+			}
+			else {
+				//pop
+				stack.push_back( next);
+			}
+
+		}
+		else {
+			//delete
+			del_remove_edge(next, edges, verts);
+			next = edges[next.twin];
+
+		}
+	}
+	return newEdgeId;
+}
+void contrainedTri_right(int pl, int pr, Edge se, Delaunay2d_t& del) {
+	auto& edges = del.edges;
+	auto& points = del.points;
+	auto& verts = del.verts;
+
+	//vector<Edge> stack = {pl, se.orig};
+	vector<Edge> stack = { se };
+
+	Edge next = se;
+
+	while (next.orig != pr) {
+		next = edges[edges[next.prev].twin];
+
+		if (next.orig == pr) {
+			//退栈
+			while (stack.size() >= 2) {
+				Edge prev_e = stack[stack.size() - 1];
+				Edge e0, e1;
+				e0.id = edges.size();
+				e1.id = e0.id + 1;
+				e0.orig = next.orig;
+				e1.orig = edges[prev_e.twin].orig;
+				e0.twin = e1.id;
+				e1.twin = e0.id;
+
+				insert_cw(next, e0, edges);
+				insert_ccw(edges[prev_e.twin], e1, edges);
+
+				edges.push_back(e0);
+				edges.push_back(e1);
+				stack.pop_back();
+			}
+
+			return;
+		}
+
+		//不考虑退化共线的情况
+		if (relation_point_seg(points[pl], points[pr], points[next.orig]) == Rel::RIGHT) {
+
+
+			Edge prev_e = stack[stack.size() - 1];
+
+			//push
+			if (relation_point_edge(prev_e.id, next.orig, del) == Rel::RIGHT) {
+				//三角化
+
+				Edge top;
+				do {
+					Edge e0, e1;
+					e0.id = edges.size();
+					e1.id = e0.id + 1;
+					e0.orig = next.orig;
+					e1.orig = edges[prev_e.twin].orig;
+					e0.twin = e1.id;
+					e1.twin = e0.id;
+
+					insert_cw(next, e0, edges);
+					insert_ccw(edges[prev_e.twin], e1, edges);
+
+					edges.push_back(e0);
+					edges.push_back(e1);
+					stack.pop_back();
+
+					top = e0;
+
+				} while (stack.size() > 0 && relation_point_edge(stack[stack.size() - 1].id, top.orig, del) == Rel::RIGHT);
+				stack.push_back(top);
+			}
+			else {
+				//pop
+				stack.push_back(next);
+			}
+
+		}
+		else {
+			//delete
+			del_remove_edge(next, edges, verts);
+			next = edges[next.twin];
+		}
+	}
+}
+
+int addContrainedEdge(int start,int end, Delaunay2d_t& del) {
+	if (start < 0 || end < 0 || start >= del.verts.size() || end >= del.verts.size()) {
+		return -1;
+	}
+
+	auto& edges = del.edges;
+	auto& points = del.points;
+	auto& pl = points[start];
+	auto& pr = points[end];
+
+	Edge e0 = edges[del.verts[start].inc];
+	Edge e1 = edges[e0.prev];
+	int startEdge= e0.id;
+	while (e1.id != startEdge) {
+		//
+		int p0 = edges[edges[e0.id].twin].orig;
+		int p1 = edges[edges[e1.id].twin].orig;
+		if ( p0 == end ) {
+			return e0.id;
+		}
+		if (p1 == end) {
+			return e1.id;
+		}
+		Rel s0 = relation_point_seg(pl, pr, points[p0]);
+		Rel s1 = relation_point_seg(pl, pr, points[p1]);
+
+		if (s0 == Rel::LEFT && s1 == Rel::RIGHT) {
+			//split
+			
+			
+			int id = contrainedTri_left(start, end, edges[e0.twin], del);
+			contrainedTri_right(start, end, edges[e1.twin], del);
+			return id;
+
+		}
+		//else if (s0 == Rel::RIGHT && s1 == Rel::LEFT) {
+		//	int id = contrainedTri_left(start, end, edges[e1.twin], del);
+		//	contrainedTri_right(start, end, edges[e0.twin], del);
+		//	return id;
+		//}
+
+		e0 = e1;
+		e1 = edges[e0.prev];
+	}
+	return -1;
+}
 
 vector<int> extractTri(Delaunay2d_t& del) {
 	auto& edges = del.edges;
@@ -458,19 +707,89 @@ vector<int> extractTri(Delaunay2d_t& del) {
 
 void delaunay2d(std::vector<glm::vec3>& points, Delaunay2d_t& del) {
 
-	if (points.size() < 3) {
+	auto& verts = del.verts;
+	//if (points.size() < 3) {
+	//	return;
+	//}
+
+	if (verts.size() < 3) {
 		return;
 	}
 
-	sort(points.begin(), points.end(), vertCmp);
-	del.verts = vector<Vertex>(points.size(), Vertex());
+
+	//sort(points.begin(), points.end(), vertCmp);
+	sort(verts.begin(), verts.end(), vertCmp);
+	for (int idx = 0; idx < verts.size(); idx++) {
+		points[idx] = verts[idx].pos;
+	}
+
+
+	//del.verts = vector<Vertex>(points.size(), Vertex());
 
 	delaunay_s result;
 
 	del_divide_conquer(result, 0, points.size() - 1,del);
 
-
 }
+
+// outline points 顺时针
+void addOutline(vector<int>& points,Delaunay2d_t& del) {
+
+	int count = points.size();
+	auto& edges = del.edges;
+	auto& verts = del.verts;
+	for (int idx = 0; idx < count; idx++) {
+
+		int p0 = points[idx];
+		int p1 = points[ (idx+1)%count ];
+		int p2 = points[ (idx+2)%count];
+
+		int e0 = addContrainedEdge(p0, p1, del);
+		int e1 = addContrainedEdge(p1, p2, del);
+
+		int e_prev = edges[edges[e0].twin].prev;
+		while ( e_prev != e1) {
+			//del
+			del_remove_edge(edges[e_prev], edges, verts);
+			e_prev = edges[e_prev].prev;
+		}
+
+	}
+}
+
+//holes contours 逆时针
+void removeHoles(vector<int>& points, Delaunay2d_t& del) {
+	int count = points.size();
+	auto& edges = del.edges;
+	auto& verts = del.verts;
+	for (int idx = 0; idx < count; idx++) {
+
+		int p0 = points[idx];
+		int p1 = points[(idx + 1) % count];
+		int p2 = points[(idx + 2) % count];
+
+		int e0 = addContrainedEdge(p0, p1, del);
+		int e1 = addContrainedEdge(p1, p2, del);
+		assert( edges[e0].id != -1);
+		assert(edges[e1].id != -1);
+
+		//int e_next= edges[edges[e0].twin].next;
+		//while (e_next!= e1) {
+		//	//del
+		//	del_remove_edge(edges[e_next], edges, verts);
+		//	e_next= edges[e_next].next;
+		//}
+
+		int e_prev = edges[edges[e0].twin].prev;
+		while (e_prev != e1) {
+			//del
+			del_remove_edge(edges[e_prev], edges, verts);
+			e_prev = edges[e_prev].prev;
+		}
+	}
+}
+
+
 vector<int> traveral_delaunay(vector<vec3>&points,vector<Edge>& edges,vector<Face>& face) {
 	vector<int> tris;
 
@@ -499,7 +818,7 @@ vector<int> traveral_delaunay(vector<vec3>&points,vector<Edge>& edges,vector<Fac
 
 			if (vertnum > 3) {
 				//out face
-				assert(outfaceId == -1);
+				//assert(outfaceId == -1);
 				outfaceId = f.id;
 				for (int idx = 0; idx < vertnum; idx++) {
 					tris.pop_back();

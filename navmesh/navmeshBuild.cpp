@@ -9,6 +9,8 @@
 #include "navmeshBuild.h"
 #include "tile.h"
 #include "glm\glm.hpp"
+
+
 NavmeshBuilder gMeshBuilder;
 Cfg gBuildCfg;
 
@@ -304,6 +306,7 @@ void NavmeshBuilder::build(	Cfg cfg) {
 			_tiles[idx].buildContour();
 			_tiles[idx].simplifyContour(cfg.lineError*cfg.cellSize);
 
+			_tiles[idx].buildPolyMesh(cfg.removeHoles);
 
 		}
 	}

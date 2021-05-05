@@ -75,10 +75,10 @@ void Scene::init() {
 	//std::string objfile = "res/mesh/unitysimple2.obj";
 
 
-	//auto objs = loadObj(objfile);
-	//for (auto& obj : objs) {
-	//	addObject(obj);
-	//}
+	auto objs = loadObj(objfile);
+	for (auto& obj : objs) {
+		addObject(obj);
+	}
 
 
 }

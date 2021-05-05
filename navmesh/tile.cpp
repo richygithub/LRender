@@ -8,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <list>
+#include "delaunay.h"
 
 using namespace glm;
 using namespace std;
@@ -435,7 +436,50 @@ void triangulation(vector<ivec3>& verts ) {
 
 }
 
-void Tile::buildPolyMesh() {
+void Tile::buildPolyMesh(bool removeHole) {
+
+	if (simpleCountours.size() <= 0)
+		return;
+	//std::vector<glm::vec3 > verts;
+	verts.clear();
+	for (auto& contour : simpleCountours) {
+		verts.insert(verts.end(), contour.begin(), contour.end());
+	}
+	//
+	Delaunay2d_t del(verts);
+
+	del.verts.reserve(verts.size());
+	for (int idx = 0; idx < verts.size(); idx++) {
+		del.verts.push_back(DCEL::Vertex(idx, -1, verts[idx]));
+	}
+
+	delaunay2d(verts, del);
+	vector<int> map = vector<int>(del.verts.size(),-1);
+	for (int idx = 0; idx < del.verts.size(); idx++) {
+		map[ del.verts[idx].idx ] = idx;
+	}
+
+	vector<int> outline;
+	int count = simpleCountours[0].size();
+	for (int idx = 0; idx < count; idx++) {
+		outline.push_back(map[idx]);
+	}
+	addOutline(outline, del);
+	
+	if (removeHole) {
+		for (int num = 1; num < simpleCountours.size(); num++) {
+			vector<int> holes;
+
+			for (int idx = 0; idx < simpleCountours[num].size(); idx++) {
+				holes.push_back(map[idx + count]);
+			}
+			count += simpleCountours[num].size();
+			removeHoles(holes, del);
+		}
+	}
+
+
+	tris = traveral_delaunay(verts, del.edges, del.faces);
 
 
 }
@@ -565,7 +609,7 @@ void simplify(const vector<ivec3>& verts, list<SimpleVert>&simpleVerts,list<Simp
 
 		}
 	}
-	if (keyMaxd > 0) {
+	if (keyMaxd > 0.01) {
 		auto it = simpleVerts.insert(end, SimpleVert(keyMaxIdx));
 
 		simplify(verts, simpleVerts, st, it, maxError, size);
