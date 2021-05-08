@@ -21,3 +21,5 @@ enum class Rel{
 Rel inCircle2D(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 p);
 bool toLeft2D(glm::vec3 a, glm::vec3 b, glm::vec3 c);
 Rel relation_point_seg(glm::vec3 a, glm::vec3 b, glm::vec3 p);
+
+glm::vec3 triCenter2D(glm::vec3 a, glm::vec3 b, glm::vec3 c);

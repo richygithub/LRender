@@ -15,13 +15,65 @@
 #include "navmeshBuild.h"
 #include <time.h>
 #include "geometry\delaunay.h"
+#include "geometry\utils.h"
+#include "input\input.h"
+#include "navmesh\navmesh.h"
 #include <algorithm>
 
 using namespace glm;
 using namespace std;
 
 
-void UI::init(GLFWwindow*window,Scene*scene) {
+void LButtonDown(double x, double y) {
+
+
+}
+
+bool bPathFind = false;
+int pairTurn = 0;
+vector<vec3> clickPos(2);
+const int MaxPolyPath = 2048;
+unsigned int polyPath[MaxPolyPath];
+int polyCount = 0;
+void UI::lbuttondown(double xpos, double ypos) {
+	Camera& camera = _scene->getCamera();
+
+	auto matrixP = camera.getMatrixP();
+	auto matrixV = camera.getMatrixV();
+	glm::ivec4 viewport;
+	glGetIntegerv(GL_VIEWPORT, (int*)&viewport);
+	ypos = (float)viewport[3] - ypos;
+
+	GLfloat depth;
+	glReadPixels(xpos, ypos, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+
+	auto wpos = glm::unProject(glm::vec3(xpos, ypos, depth), matrixV, matrixP, viewport);
+
+	//printf("this LButtonDown :");
+	//printf("(%.3f,%.3f,%.3f)-->\n(%.3f,%.3f,%.3f)", xpos, ypos, depth, wpos.x, wpos.y, wpos.z);
+	if (bPathFind) {
+
+		//gMeshBuilder._query
+		clickPos[pairTurn++] = wpos;
+		NavMesh_RunTime::dtStatus ret;
+		if (pairTurn == 2) {
+			pairTurn = 0;
+
+			ret =gMeshBuilder._query.findPath(NavMesh_RunTime::Vec3(clickPos[0].x, clickPos[0].y, clickPos[0].z),
+				NavMesh_RunTime::Vec3(clickPos[1].x, clickPos[1].y, clickPos[1].z),
+				polyPath,
+				MaxPolyPath,
+				polyCount
+				);
+
+
+		}
+
+
+	}
+
+}
+void UI::init(GLFWwindow*window,Scene*scene, InputSystem* input) {
 	const char* glsl_version = "#version 130";
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -29,6 +81,10 @@ void UI::init(GLFWwindow*window,Scene*scene) {
 
 	_win = window;
 	_scene = scene;
+	_input = input;
+	_input->registerLButtoneDown([this](double x, double y) {
+		this->lbuttondown(x, y);
+	});
 }
 imgui_addons::ImGuiFileBrowser file_dialog;
 
@@ -39,6 +95,9 @@ void showTileRasterize(Scene* scene);
 void showGeometri(Scene* scene);
 void showGround(Scene* scene);
 void showTris(Scene* scene);
+void showLinks(Scene* scene);
+
+void showPath(Scene* scene);
 
 void UI::updateCamera() {
 
@@ -83,6 +142,10 @@ void UI::updateCamera() {
 	if (ImGui::CollapsingHeader("Geo")) {
 		showGeometri(_scene);
 	}
+	if (bPathFind) {
+		showPath(_scene);
+	}
+
 
 
 	//showGround(_scene);
@@ -334,6 +397,74 @@ void showTris(Scene* scene) {
 
 }
 
+vec3 getPolyCenter(Tile& tile,Poly& poly ) {
+	vec3 offset = vec3(tile.minx, 0, tile.miny);
+	vec3 a = tile.verts[ poly.verts[0]] * tile.cellsize + offset;
+	vec3 b = tile.verts[ poly.verts[1]] * tile.cellsize + offset;
+	vec3 c = tile.verts[ poly.verts[2]] * tile.cellsize + offset;
+
+	vec3 center = triCenter2D(a, b, c);
+	return center;
+}
+
+void showPath(Scene* scene) {
+	scene->renderPoints(clickPos, 0.5);
+
+	vector<vec3> verts;
+	for (int idx = 0; idx < polyCount; idx++) {
+		const NavMesh_RunTime::MeshTile* tile;
+		const NavMesh_RunTime::MeshPoly* poly;
+
+		gMeshBuilder._rtData->extractPolyTile(polyPath[idx], &tile, &poly);
+
+		auto v0 = tile->_verts[poly->verts[0]];
+		auto v1 = tile->_verts[poly->verts[1]];
+		auto v2 = tile->_verts[poly->verts[2]];
+
+		verts.push_back( vec3(v0.x,v0.y,v0.z));
+		verts.push_back( vec3(v1.x,v1.y,v1.z));
+		verts.push_back( vec3(v2.x,v2.y,v2.z));
+	}
+
+	if (verts.size() > 0) {
+		scene->renderTris(verts );
+	}
+	
+	
+}
+
+void showLinks(Scene* scene) {
+	std::vector< glm::vec3 > verts;
+
+	for (int x = 0; x < gMeshBuilder._width; x++) {
+		for (int y = 0; y < gMeshBuilder._height; y++) {
+			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+			for (int idx = 0; idx < tile.polyNum; idx++) {
+				auto& poly = tile.polys[idx];
+				vec3 center = getPolyCenter(tile, poly);
+				for (int cidx = 0; cidx < 3; cidx++) {
+					short tid = 0;
+					short pid = 0;
+					NavMesh_RunTime::decodePolyId(poly.conn[cidx], pid,tid);
+					if (pid >= 0) {
+						auto& tarTile = gMeshBuilder._tiles[tid];
+						vec3 tarCenter = getPolyCenter(tarTile, tarTile.polys[pid]);
+						verts.push_back(center);
+						verts.push_back(tarCenter);
+					}
+				}
+				
+
+
+			}
+
+		}
+	}
+
+	scene->renderLines(verts, GL_LINES, yellow);
+
+}
+
 void showTileRasterize(Scene* scene) {
 	//gMeshBuilder.
 	float cellSize = gMeshBuilder._cellSize;
@@ -545,6 +676,15 @@ void showNavmesh(Scene*scene) {
 	if (bshowTris) {
 		showTris(scene);
 	}
+
+	static bool bshowLinks;
+	ImGui::Checkbox("show links", &bshowLinks);
+
+	if (bshowLinks) {
+		showLinks(scene);
+	}
+
+	ImGui::Checkbox("path find", &bPathFind);
 
 
 	

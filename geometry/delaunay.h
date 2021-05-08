@@ -5,6 +5,10 @@
 
 namespace DCEL{
 
+	const int INIT = -1;
+	const int OUTSIDE = -2;
+	const int INNER_HOLE = -3;
+
 
 
 	struct Edge
@@ -15,7 +19,7 @@ namespace DCEL{
 		int next;   // succ edge id
 		int face;   // face id;
 		int orig;    // orig vertex id
-		Edge():id(-1),orig(-1),face(-1){}
+		Edge():id(-1),orig(-1),face(INIT){}
 	};
 
 	struct Vertex {
@@ -32,6 +36,9 @@ namespace DCEL{
 	};
 
 }
+
+
+
 
 struct Delaunay2d_t {
 	std::vector<glm::vec3>& points;

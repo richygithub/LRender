@@ -8,7 +8,8 @@
 #include <vector>
 #include <stack>
 #include <list>
-#include "delaunay.h"
+#include "navmesh.h"
+//#include "delaunay.h"
 
 using namespace glm;
 using namespace std;
@@ -23,13 +24,16 @@ Tile::~Tile() {
 	if (region != nullptr) {
 		delete[] region;
 	}
+	if (polys != nullptr) {
+		delete[] polys;
+	}
 }
 	
 void Tile::init(int x, int y, int size,float cellsize,float minx,float miny) {
 	if (cells != nullptr) {
 		delete[]cells;
 	}
-	// cells = new Cell[size * size];
+	cells = new Cell[size * size];
 	this->x = x;
 	this->y = y;
 	this->size = size;
@@ -431,10 +435,6 @@ void Tile::buildContour() {
 	}
 }
 
-void triangulation(vector<ivec3>& verts ) {
-
-
-}
 
 void Tile::buildPolyMesh(bool removeHole) {
 
@@ -446,7 +446,10 @@ void Tile::buildPolyMesh(bool removeHole) {
 		verts.insert(verts.end(), contour.begin(), contour.end());
 	}
 	//
-	Delaunay2d_t del(verts);
+	//Delaunay2d_t del(verts);
+
+	del.clear();
+	
 
 	del.verts.reserve(verts.size());
 	for (int idx = 0; idx < verts.size(); idx++) {
@@ -465,6 +468,9 @@ void Tile::buildPolyMesh(bool removeHole) {
 		outline.push_back(map[idx]);
 	}
 	addOutline(outline, del);
+
+
+
 	
 	if (removeHole) {
 		for (int num = 1; num < simpleCountours.size(); num++) {
@@ -480,6 +486,63 @@ void Tile::buildPolyMesh(bool removeHole) {
 
 
 	tris = traveral_delaunay(verts, del.edges, del.faces);
+
+	if (polys != nullptr) {
+		delete[] polys;
+		polyNum = 0;
+	}
+	polyNum = del.faces.size();
+	auto& edges = del.edges;
+	polys = new Poly[polyNum];
+
+	//int tileId = this->y * this->size + this->x;
+	for (int dir = 0; dir < 4; dir++) {
+		links[dir].clear();
+	}
+	for (int idx = 0; idx < del.faces.size(); idx++) {
+		auto& f = del.faces[idx];
+		polys[idx].setId(id, idx);
+
+		DCEL::Edge e = edges[f.inc];
+
+		int sid = e.id;
+		int count = 0;
+		do {
+			polys[idx].verts[count] = e.orig;
+			int fid = edges[e.twin].face;
+
+			polys[idx].conn[count] = NavMesh_RunTime::encodePolyId(id, fid);
+
+			if (fid == DCEL::OUTSIDE) {
+				auto sp = verts[ e.orig];
+				auto ep = verts[edges[e.twin].orig];
+				if ((int)sp.x == 0 && (int)ep.x == 0) {
+					links[0].push_back({ e.id, count });
+				}
+				else if ((int)sp.x == size && (int)ep.x == size ) {
+					links[2].push_back({ e.id,count });
+				}
+				else if ((int)sp.z == 0 && (int)ep.z == 0 ) {
+					links[3].push_back({ e.id,count });
+				}
+				else if ((int)sp.z == size && (int)ep.z == size) {
+					links[1].push_back({ e.id,count });
+				}
+
+				polys[idx].conn[count] = NavMesh_RunTime::INVALID_ID;
+			}
+
+			if (fid == DCEL::INNER_HOLE) {
+				polys[idx].conn[count] = NavMesh_RunTime::INVALID_ID;	
+			}
+
+
+			count+=1;
+			//int next = edges[ edges[f.inc].twin].prev ;
+			e = edges[edges[e.twin].prev];
+		} while (e.id != sid );
+
+	}
 
 
 }

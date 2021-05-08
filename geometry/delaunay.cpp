@@ -747,6 +747,10 @@ void addOutline(vector<int>& points,Delaunay2d_t& del) {
 		int e0 = addContrainedEdge(p0, p1, del);
 		int e1 = addContrainedEdge(p1, p2, del);
 
+		edges[e0].face = DCEL::OUTSIDE;
+		edges[e1].face = DCEL::OUTSIDE;
+
+
 		int e_prev = edges[edges[e0].twin].prev;
 		while ( e_prev != e1) {
 			//del
@@ -773,6 +777,10 @@ void removeHoles(vector<int>& points, Delaunay2d_t& del) {
 		assert( edges[e0].id != -1);
 		assert(edges[e1].id != -1);
 
+		edges[e0].face = DCEL::INNER_HOLE;
+		edges[e1].face = DCEL::INNER_HOLE;
+
+
 		//int e_next= edges[edges[e0].twin].next;
 		//while (e_next!= e1) {
 		//	//del
@@ -796,7 +804,7 @@ vector<int> traveral_delaunay(vector<vec3>&points,vector<Edge>& edges,vector<Fac
 	vector<bool> visit(edges.size(), false);
 	int outfaceId = -1;
 	for (auto& e : edges) {
-		if (e.id >= 0 && e.face == -1) {
+		if (e.id >= 0 && e.face == DCEL::INIT) {
 
 			int vertnum = 0;
 

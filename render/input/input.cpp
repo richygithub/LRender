@@ -15,6 +15,9 @@ using namespace glm;
 double preX, preY;
 bool leftButtonDown = false;
 bool rightButtonDown = false;
+mouseEvent InputSystem::_lButtonDown = nullptr; //[](double, double) {};
+mouseEvent InputSystem::_rButtonDown= nullptr;
+
 
 
 static void mouse_callback(GLFWwindow* window, int button, int action, int mods)
@@ -27,10 +30,16 @@ static void mouse_callback(GLFWwindow* window, int button, int action, int mods)
 			rightButtonDown = false;
 	}
 	else if (button == GLFW_MOUSE_BUTTON_LEFT) {
-		if (GLFW_PRESS == action)
+		if (GLFW_PRESS == action) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			InputSystem::LButtonDown(xpos, ypos);
+
 			leftButtonDown = true;
-		else if (GLFW_RELEASE == action)
+		}
+		else if (GLFW_RELEASE == action) {
 			leftButtonDown = false;
+		}
 	}
 }
 
@@ -58,8 +67,8 @@ void InputSystem::update() {
 	glfwGetCursorPos(_win, &xpos, &ypos);
 
 	auto& camera = _scene->getCamera();
-
 	if (rightButtonDown) {
+		
 
 		//printf("move %.3f %.3f --> %.3f,%3.f\n",xpos,ypos,xpos - preX,ypos - preY);
 		vec3 diff = vec3(xpos - preX, -(ypos - preY), 0);

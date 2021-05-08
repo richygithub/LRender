@@ -172,7 +172,7 @@ std::vector<glm::vec3>  NavmeshBuilder::rasterize(const std::vector<glm::vec3>& 
 	return planeVerts;
 }
 
-NavmeshBuilder::NavmeshBuilder():_tiles(nullptr) {
+NavmeshBuilder::NavmeshBuilder():_tiles(nullptr), _rtData(nullptr){
 
 }
 
@@ -264,6 +264,58 @@ void NavmeshBuilder::debug() {
 
 }
 
+void NavmeshBuilder::seralize() {
+
+	if (_rtData != nullptr) {
+		delete _rtData;
+	}
+	_rtData = new NavMesh_RunTime::NavMesh();
+
+	_rtData->_cellSize = _cellSize;
+	_rtData->_tileSize = _tileSize;
+	_rtData->_width = _width;
+	_rtData->_height = _height;
+	_rtData->_min = NavMesh_RunTime::Vec3(_min.x,_min.y,_min.z);
+	_rtData->_max = NavMesh_RunTime::Vec3(_max.x,_max.y,_max.z);
+
+
+	_rtData->_tiles = new NavMesh_RunTime::MeshTile[_width * _height];
+	for (int idx = 0; idx < _width * _height; idx++) {
+
+		auto& mt = _rtData->_tiles[idx];
+		auto& t = _tiles[idx];
+		int vtNum = t.verts.size();
+		if (vtNum > 0) {
+			mt._vertNum = vtNum;
+			mt._verts = new NavMesh_RunTime::Vec3[vtNum];
+			vec3 offset(t.minx,0,t.miny );
+			for (int count = 0; count < vtNum; count++) {
+				vec3 realPos = t.verts[count] * t.cellsize + offset;
+				
+				mt._verts[count].x = realPos.x;
+				mt._verts[count].y = realPos.y;
+				mt._verts[count].z = realPos.z;
+				//= NavMesh_RunTime::Vec3(t.verts[idx].x, t.verts[idx].y, t.verts[idx].z);
+			}
+		}
+		if (t.polyNum > 0) {
+			mt._polyNum = t.polyNum;
+			mt._polys = new NavMesh_RunTime::MeshPoly[t.polyNum];
+			for (int count = 0; count < mt._polyNum; count++) {
+				mt._polys[count].id = t.polys[count].id;
+				for (int vCount = 0; vCount < 3; vCount++) {
+					mt._polys[count].verts[vCount] = t.polys[count].verts[vCount];
+					mt._polys[count].conn[vCount] = t.polys[count].conn[vCount];
+				}
+			}
+		}
+	}
+
+	_query.init(_rtData,2048);
+
+
+}
+
 void NavmeshBuilder::build(	Cfg cfg) {
 	_tileSize = cfg.tileSize;
 	_cellSize = cfg.cellSize;
@@ -287,8 +339,36 @@ void NavmeshBuilder::build(	Cfg cfg) {
 
 
 			_tiles[idx].init(x, y, _tileSize,_cellSize,minx,miny);
+			_tiles[idx].id = idx;
 		}
 	}
+	//ÉèÖÃ±ß½ç
+	for (int y = 0; y < _height; y++) {
+
+		int idx = y * _width + _width - 1;
+		int mx = (_max.x - _min.x) / _cellSize - (_width - 1) * _tileSize;
+		
+		for (int cy = 0; cy < _tileSize; cy++) {
+			for (int cx = mx; cx < _tileSize; cx++) {
+				_tiles[idx].setCell(cx, cy);
+			}
+		}
+
+	}
+
+	for (int x = 0; x < _width; x++) {
+
+		int idx = (_height - 1) * _width + x;
+		int my = (_max.z - _min.z) / _cellSize - (_height - 1) * _tileSize;
+	
+		for (int cy = my; cy < _tileSize; cy++) {
+			for (int cx = 0; cx < _tileSize; cx++) {
+				_tiles[idx].setCell(cx, cy);
+			}
+		}
+
+	}
+
 
 	_debug.clear();
 	for (int idx = 0; idx < _objVerts.size(); idx++) {
@@ -304,19 +384,92 @@ void NavmeshBuilder::build(	Cfg cfg) {
 			_tiles[idx].calcBorder();
 			//_tiles[idx].buildRegion();
 			_tiles[idx].buildContour();
-			_tiles[idx].simplifyContour(cfg.lineError*cfg.cellSize);
+			_tiles[idx].simplifyContour(cfg.lineError);
 
 			_tiles[idx].buildPolyMesh(cfg.removeHoles);
-
 		}
 	}
 
+	//linkTile
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			linkTile(_tiles[idx]);
+		}
+	}
+
+	seralize();
 
 }
+
+void connectTile(Tile& src,Tile& dst,int dir) {
+
+	for (auto& se : src.links[dir]) {
+
+		for (auto& de : dst.links[(dir + 2) % 4]) {
+
+			auto& se0 = src.del.edges[se.eid];
+			auto& se1 = src.del.edges [ src.del.edges[se.eid].twin];
+
+			auto& sp0 = src.verts[se0.orig];
+			auto& sp1 = src.verts[se1.orig];
+
+			auto& de0 = dst.del.edges[de.eid];
+			auto& de1 = dst.del.edges [ dst.del.edges[de.eid].twin];
+
+			auto& dp0 = dst.verts[de0.orig];
+			auto& dp1 = dst.verts[de1.orig];
+
+			bool connected = false;
+			if (dir == 0) {
+				connected = (sp1.z >= dp0.z && sp1.z < dp1.z) || (sp1.z <= dp0.z && sp0.z > dp0.z);
+			}
+			else if (dir == 1) {
+				connected = (sp1.x >= dp0.x && sp1.x < dp1.x) || (sp1.x <= dp0.x && sp0.x > dp0.x);
+			}
+			else if (dir == 2) {
+				//connected = (sp1.z > dp1.z && sp1.z < dp0.z) || (dp1.z > sp0.z && dp1.z < sp1.z);
+				connected = (sp1.z >= dp0.z && sp0.z < dp0.z) || (sp1.z <= dp0.z && sp1.z > dp1.z);
+	
+			}
+			else if (dir == 3) {
+				connected = (sp1.x >= dp0.x && sp0.x < dp0.x) || (sp1.x <= dp0.x && sp1.x > dp1.x);
+			}
+			if (connected) {
+				src.polys[se0.face].conn[se.connId] = dst.polys[de0.face].id;
+				dst.polys[de0.face].conn[de.connId] = src.polys[se0.face].id;
+				continue;
+			}
+		}
+
+	}
+
+}
+//0-- left, 1--up, 2--right, 3--down
+static const int offset_x[4] = { -1, 0, 1,  0 };
+static const int offset_y[4] = { 0, 1, 0, -1 };
+void NavmeshBuilder::linkTile(Tile& tile) {
+
+	for (int dir = 0; dir < 4; dir++) {
+		int x = offset_x[dir] + tile.x;
+		int y = offset_y[dir] + tile.y;
+		if (x >= 0 && x < _width && y >= 0 && y < _height) {
+			Tile& dst = _tiles[y * _width + x];
+			connectTile(tile, dst, dir);
+		}
+	}
+}
+
 NavmeshBuilder::~NavmeshBuilder() {
 	if (_tiles != nullptr) {
 		delete[] _tiles;
+		_tiles = nullptr;
 	}
+	if (_rtData != nullptr) {
+		delete _rtData;
+		_rtData = nullptr;
+	}
+
 
 }
 

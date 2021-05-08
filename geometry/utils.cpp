@@ -84,3 +84,8 @@ Rel inCircle2D(vec3 a,vec3 b, vec3 c,vec3 p) {
 	}
 	return Rel::ON;
 }
+
+vec3 triCenter2D(vec3 a, vec3 b, vec3 c) {
+	float scale = 1.0f / 3.0f;
+	return (a  + b + c)*scale;
+}

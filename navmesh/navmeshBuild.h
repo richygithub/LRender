@@ -9,6 +9,7 @@
 #include <vector>
 #include "glm\glm.hpp"
 #include "tile.h"
+#include "navmesh.h"
 
 struct Cfg {
 	int tileSize;
@@ -50,7 +51,11 @@ struct NavmeshBuilder {
 	}
 	std::vector< std::vector<glm::vec3> > _debug;
 
+	NavMesh_RunTime::NavMesh* _rtData;
+	NavMesh_RunTime::NavMeshQuery _query;
+
 	void debug();
+	void seralize();
 private:
 
 	std::vector<glm::vec3> _planes;
@@ -63,6 +68,8 @@ private:
 	glm::ivec2 getCellXY(float x, float y);
 	void rasterizeFlatBottomTri(const std::vector<glm::vec3>& verts );
 	void rasterizeFlatTopTri(const std::vector<glm::vec3>& verts );
+
+	void linkTile(Tile& tile);
 
 
 

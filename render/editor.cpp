@@ -120,11 +120,13 @@ int main( void )
 
 	Scene scene;
 	scene.init();
-	UI ui;
-	ui.init(window,&scene);
 
 	InputSystem input;
 	input.init(window, &scene);
+
+	UI ui;
+	ui.init(window,&scene,&input);
+
 
 
 	do{

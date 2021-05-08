@@ -7,6 +7,10 @@
 #pragma once
 
 #include "glm\glm.hpp"
+#include "delaunay.h"
+
+#include "navmesh.h"
+
 #include <vector>
 struct Cell {
 	unsigned short block:1;
@@ -20,9 +24,28 @@ struct Cell {
 	}
 };
 
+
+
+struct Poly {
+	int verts[NavMesh_RunTime::PolyVertNum];
+	int conn[NavMesh_RunTime::PolyVertNum];
+	int id;
+	void setId(int tid,int pid) {
+		id = NavMesh_RunTime::encodePolyId(tid,pid);
+	}
+	
+};
+
+
+struct Link {
+	int eid;
+	int connId;
+};
+
 struct Tile {
 	unsigned int x;
 	unsigned int y;
+	int id;
 	unsigned int size;
 	float minx;
 	float miny;
@@ -32,6 +55,9 @@ struct Tile {
 	uint16_t* dist;
 	uint16_t* region;
 
+	Poly* polys;
+	int polyNum;
+
 	std::vector< std::vector<glm::ivec3> > rawCountours;
 	std::vector< std::vector<glm::ivec3> > simpleCountours;
 	std::vector< std::vector<glm::vec3> > showCountours;
@@ -40,12 +66,15 @@ struct Tile {
 	std::vector<glm::vec3> verts;
 
 
+	//4方向连接边
+	std::vector<Link> links[4];
+	Delaunay2d_t del;
 
-
+	inline int getId()const { return id; };
 
 	void init(int x,int y,int size,float cellsize,float minx,float miny);
 	void setCell(int x, int y);
-	Tile() :cells(nullptr), dist(nullptr),region(nullptr){};
+	Tile() :cells(nullptr), dist(nullptr),region(nullptr),polys(nullptr),polyNum(0), del(verts){};
 
 	~Tile();
 	void calcDistField();
