@@ -210,7 +210,7 @@ void del_remove_edge(Edge base, vector<Edge>& edges, vector<Vertex>& verts ) {
 }
 
 
-Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points,vector<Vertex>& verts) {
+Edge del_link_left(delaunay_s&left,Edge base,vector<Edge>&edges,vector<vec3>&points,vector<Vertex>& verts) {
 
 	//base.orig
 	auto& pl = points[ base.orig];
@@ -225,6 +225,13 @@ Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points,vector<Verte
 		while ( p1 != p2 && relation_point_seg(pl, pr, points[p2]) == Rel::LEFT && inCircle2D(pl,pr,points[p1],points[p2]) == Rel::INSIDE ) {
 
 			//remove 
+			if (s.id == left.leftmost_e) {
+				left.leftmost_e = s.next;
+			}else if(s.twin== left.leftmost_e) {
+				left.leftmost_e = edges[s.twin].next;
+			}
+
+
 			del_remove_edge(s, edges,verts);
 
 			//verts
@@ -242,7 +249,7 @@ Edge del_link_left(Edge base,vector<Edge>&edges,vector<vec3>&points,vector<Verte
 
 }
 
-Edge del_link_right(Edge base, vector<Edge>& edges, vector<vec3>& points, vector<Vertex>& verts) {
+Edge del_link_right(delaunay_s& right,Edge base, vector<Edge>& edges, vector<vec3>& points, vector<Vertex>& verts) {
 	//base.orig
 	auto& pl = points[base.orig];
 	auto& pr = points[edges[base.twin].orig];
@@ -256,6 +263,13 @@ Edge del_link_right(Edge base, vector<Edge>& edges, vector<vec3>& points, vector
 		while (p1 != p2 && relation_point_seg(pl, pr, points[p2]) == Rel::LEFT && inCircle2D(pl, pr, points[p1], points[p2]) == Rel::INSIDE) {
 
 			//remove 
+			if (s.id == right.rightmost_e) {
+				right.rightmost_e = s.next;
+			}
+			else if (s.twin == right.rightmost_e){
+				right.rightmost_e = edges[s.twin].next;
+			}
+			
 			del_remove_edge(s, edges,verts);
 			s = edges[s.prev];
 			p1 = edges[s.twin].orig;
@@ -286,9 +300,9 @@ void insert_cw(const Edge& e,Edge& newEdge,vector<Edge>& edges) {
 
 int del_valid_link(int eid, vector<Edge>& edges, vector<vec3>& points,vector<Vertex>& verts, delaunay_s& left, delaunay_s& right) {
 
-	Edge ll = del_link_left( edges[eid], edges, points,verts);
+	Edge ll = del_link_left(left,edges[eid], edges, points,verts);
 
-	Edge rr = del_link_right(edges[eid], edges, points,verts);
+	Edge rr = del_link_right(right,edges[eid], edges, points,verts);
 
 	if (ll.id == eid && ll.id == rr.id) {
 
@@ -338,6 +352,7 @@ int del_valid_link(int eid, vector<Edge>& edges, vector<vec3>& points,vector<Ver
 		insert_cw(insertR, rl, edges);
 		if (insertR.id == right.rightmost_e) {
 			right.rightmost_e = rl.id;
+			//verts[rl.orig].inc = rl.id;
 		}
 
 		edges.push_back(lr);
@@ -352,9 +367,15 @@ static void del_merge(delaunay_s& del, delaunay_s& left, delaunay_s& right, Dela
 	int base_e= del_get_lower_tangent(left, right, output);
 	auto& edges = output.edges;
 	auto& points= output.points;
+	auto& verts = output.verts;
 
 	int pl =  edges[edges[ edges[base_e].next ].twin].orig;
 	int pr =  edges[edges[edges[ edges[base_e].twin].prev].twin].orig ;
+
+	int ml = edges[left.leftmost_e].orig;
+	int mr = edges[right.rightmost_e].orig;
+
+
 
 	while (  relation_point_edge(base_e,pl,output)== Rel::LEFT||
 		relation_point_edge(base_e, pr, output) == Rel::LEFT) {
@@ -369,8 +390,16 @@ static void del_merge(delaunay_s& del, delaunay_s& left, delaunay_s& right, Dela
 
 	del.start_point = left.start_point;
 	del.end_point = right.end_point;
+	//del.leftmost_e = verts[ml].inc; //left.leftmost_e;
+	//del.rightmost_e = verts[mr].inc; //right.rightmost_e;
+
 	del.leftmost_e = left.leftmost_e;
 	del.rightmost_e = right.rightmost_e;
+
+
+	assert(edges[del.leftmost_e].id != -1);
+	assert(edges[del.rightmost_e].id != -1);
+
 
 }
 
@@ -378,6 +407,7 @@ int del_get_lower_tangent(delaunay_s& left ,delaunay_s& right, Delaunay2d_t& out
 
 	auto& edges = output.edges;
 	auto& points = output.points;
+	auto& verts = output.verts;
 
 	auto left_e = edges[left.rightmost_e];
 	auto right_e = edges[right.leftmost_e];
@@ -415,6 +445,9 @@ int del_get_lower_tangent(delaunay_s& left ,delaunay_s& right, Delaunay2d_t& out
 	if (left_e.id == left.leftmost_e) {
 		//
 		left.leftmost_e = btl.id;
+		verts[btl.orig].inc = btl.id;
+		
+
 	}
 
 
@@ -649,7 +682,7 @@ int addContrainedEdge(int start,int end, Delaunay2d_t& del) {
 	Edge e0 = edges[del.verts[start].inc];
 	Edge e1 = edges[e0.prev];
 	int startEdge= e0.id;
-	while (e1.id != startEdge) {
+	do {
 		//
 		int p0 = edges[edges[e0.id].twin].orig;
 		int p1 = edges[edges[e1.id].twin].orig;
@@ -679,7 +712,8 @@ int addContrainedEdge(int start,int end, Delaunay2d_t& del) {
 
 		e0 = e1;
 		e1 = edges[e0.prev];
-	}
+	 }while (e0.id != startEdge);
+
 	return -1;
 }
 
@@ -751,21 +785,42 @@ void addOutline(vector<int>& points,Delaunay2d_t& del) {
 		edges[e1].face = DCEL::OUTSIDE;
 
 
+		//int e_prev = edges[edges[e0].twin].prev;
+		//while ( e_prev != e1) {
+		//	//del
+		//	del_remove_edge(edges[e_prev], edges, verts);
+		//	e_prev = edges[e_prev].prev;
+		//}
+
+	}
+
+	for (int idx = 0; idx < count; idx++) {
+
+		int p0 = points[idx];
+		int p1 = points[(idx + 1) % count];
+		int p2 = points[(idx + 2) % count];
+
+		int e0 = addContrainedEdge(p0, p1, del);
+		int e1 = addContrainedEdge(p1, p2, del);
+
 		int e_prev = edges[edges[e0].twin].prev;
-		while ( e_prev != e1) {
+		while (e_prev != e1) {
 			//del
 			del_remove_edge(edges[e_prev], edges, verts);
 			e_prev = edges[e_prev].prev;
 		}
 
 	}
+
 }
 
 //holes contours ÄæÊ±Õë
-void removeHoles(vector<int>& points, Delaunay2d_t& del) {
+void removeHole(vector<int>& points, Delaunay2d_t& del) {
 	int count = points.size();
 	auto& edges = del.edges;
 	auto& verts = del.verts;
+
+	//Ìí¼Óconstrained
 	for (int idx = 0; idx < count; idx++) {
 
 		int p0 = points[idx];
@@ -781,12 +836,25 @@ void removeHoles(vector<int>& points, Delaunay2d_t& del) {
 		edges[e1].face = DCEL::INNER_HOLE;
 
 
-		//int e_next= edges[edges[e0].twin].next;
-		//while (e_next!= e1) {
+		//int e_prev = edges[edges[e0].twin].prev;
+		//while (e_prev != e1) {
 		//	//del
-		//	del_remove_edge(edges[e_next], edges, verts);
-		//	e_next= edges[e_next].next;
+		//	del_remove_edge(edges[e_prev], edges, verts);
+		//	e_prev = edges[e_prev].prev;
 		//}
+	}
+
+	for (int idx = 0; idx < count; idx++) {
+
+		int p0 = points[idx];
+		int p1 = points[(idx + 1) % count];
+		int p2 = points[(idx + 2) % count];
+
+		int e0 = addContrainedEdge(p0, p1, del);
+		int e1 = addContrainedEdge(p1, p2, del);
+		assert(edges[e0].id != -1);
+		assert(edges[e1].id != -1);
+
 
 		int e_prev = edges[edges[e0].twin].prev;
 		while (e_prev != e1) {
@@ -795,6 +863,8 @@ void removeHoles(vector<int>& points, Delaunay2d_t& del) {
 			e_prev = edges[e_prev].prev;
 		}
 	}
+
+
 }
 
 

@@ -12,15 +12,17 @@
 #include "navmesh.h"
 
 #include <vector>
+#include <map>
 struct Cell {
 	unsigned short block:1;
 	unsigned short border:4;  //ÊÇ·ñÎª±ß½ç
 	unsigned short contourVisited:4;
-
+	unsigned short area : 7;
 	Cell() {
 		block = 0;
 		border = 0;
 		contourVisited = 0;
+		area = 0;
 	}
 };
 
@@ -87,12 +89,22 @@ struct Tile {
 	void buildSimpleRegion();
 	void buildContour();
 	void buildPolyMesh(bool removeHole=true);
+
+	void addOutlines();
+	void removeHoles();
+	void connectPoly();
 	
 	void walkContour(int cx, int cy, int fdir, std::vector<glm::ivec3>& contours);
 	void simplifyContour(float maxError);
 	void mergeHoles();
 
-	void calcBorder();
+	void calcBorder(int minBlock);
+private:
+	void calcArea();
+	void removeSmallBlock(int minBlock);
+	std::map<int,int> areaBlockNum;
+	std::map<int,std::vector<int>> areaLists;
+
 
 
 };

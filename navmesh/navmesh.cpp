@@ -52,7 +52,10 @@ namespace NavMesh_RunTime {
 			_tiles = nullptr;
 		}
 	}
-
+	void NavMesh::findTile(Vec3 point, int& x, int& y)const {
+		x = (point.x - _min.x) / (_tileSize * _cellSize);
+		y= (point.z - _min.z) / (_tileSize * _cellSize);
+	}
 	
 	int NavMesh::findPoly(Vec3 point,Vec3& location)const {
 		int tileX = (point.x - _min.x) / (_tileSize * _cellSize);
@@ -119,8 +122,130 @@ namespace NavMesh_RunTime {
 	}
 	Vec3 getEdgeMidPoint(const MeshTile* tile,const MeshPoly* poly,int edgeId) {
 		int p0 = poly->verts[edgeId];
-		int p1 = poly->verts[edgeId % PolyVertNum];
+		int p1 = poly->verts[(edgeId+1) % PolyVertNum];
 		return (tile->_verts[p0] + tile->_verts[p1])*0.5f;
+
+	}
+
+	static void swapVert(Vec3& v0,Vec3& v1) {
+		Vec3 tmp = v0;
+		v0 = v1;
+		v1 = tmp;
+	}
+	bool NavMeshQuery::getPortalPoint(const dtNode* node, Vec3& left, Vec3& right) {
+		if (node == nullptr)
+			return false;
+		int conn = node->conn;
+		node = _nodePool->getNodeAtIdx(node->pidx);
+		if (node == nullptr)
+			return false;
+		const MeshTile* tile = nullptr;
+		const MeshPoly* poly = nullptr;
+		_meshData->extractPolyTile(node->id, &tile, &poly);
+		int vi0 = poly->verts[conn];
+		int vi1 = poly->verts[(conn + 1) % PolyVertNum];
+		Vec3 v0 = tile->_verts[vi0];
+		Vec3 v1 = tile->_verts[vi1];
+		left = v0;
+		right = v1;
+		//if (v0.x > v1.x) {
+		//	left = v1;
+		//	right = v0;
+		//}
+		//else {
+		//	left = v0;
+		//	right = v1;
+		//}
+		return true;
+	}
+
+	dtStatus NavMeshQuery::getPathPoint(Vec3 start, Vec3 end,  const dtNode* endNode, Vec3* pointPath, const int maxPoint, int& pointCount) {
+		dtStatus s = DT_SUCCESS;
+		//while (endNode->hops >= maxPoint) {
+		//	endNode = _nodePool->getNodeAtIdx(endNode->pidx);
+		//	s |= DT_BUFFER_TOO_SMALL;
+		//}
+
+		int conn = endNode->conn;
+		Vec3 curPoint = end;
+
+		endNode = _nodePool->getNodeAtIdx(endNode->pidx);
+		const MeshTile* tile = nullptr;
+		const MeshPoly* poly = nullptr;
+
+		_meshData->extractPolyTile(endNode->id, &tile, &poly);
+
+		int vi0 = poly->verts[conn];
+		int vi1 = poly->verts[(conn+1)% PolyVertNum];
+
+
+		Vec3 portalLeft = tile->_verts[vi0];
+		Vec3 portalRight = tile->_verts[vi1];
+		//if (portalLeft.x > portalRight.x) {
+		//	swapVert(portalLeft, portalRight);
+		//}
+
+		int pCount = 0;
+		pointPath[pCount++] = end;
+
+
+		const dtNode* leftNode = endNode;
+		const dtNode* rigthNode = endNode;
+
+		while (endNode!=nullptr && pCount< maxPoint) {
+			conn = endNode->conn;
+			endNode = _nodePool->getNodeAtIdx(endNode->pidx);
+			Vec3 v0, v1;
+			if (endNode == nullptr) {
+				//
+				v0 = start;
+				v1 = start;
+			}
+			else {
+				_meshData->extractPolyTile(endNode->id, &tile, &poly);
+
+				int vi0 = poly->verts[conn];
+				int vi1 = poly->verts[(conn + 1) % PolyVertNum];
+				v0 = tile->_verts[vi0];
+				v1 = tile->_verts[vi1];
+
+				//if (v0.x > v1.x) {
+				//	swapVert(v0, v1);
+				//}
+			}
+
+			if (onLeft2D(curPoint, v0,portalLeft)) {
+				portalLeft = v0;
+				leftNode = endNode;
+				if (toLeft2D(curPoint, portalLeft, portalRight)) {
+					//µã
+					pointPath[pCount++] = portalRight;
+					curPoint = portalRight;
+					endNode = rigthNode;
+					getPortalPoint(rigthNode, portalLeft, portalRight);
+				}
+			}
+
+			if (onLeft2D(curPoint, portalRight, v1)) {
+				portalRight = v1;
+				rigthNode = endNode;
+				if (toLeft2D(curPoint, portalLeft, portalRight)) {
+					//µã
+					pointPath[pCount++] = portalLeft;
+					curPoint = portalLeft;
+					endNode = leftNode;
+					getPortalPoint(leftNode, portalLeft, portalRight);
+	
+				}
+
+			}
+
+		}
+
+		pointPath[pCount++] = start;
+		pointCount = pCount;
+
+		return s;
 
 	}
 	dtStatus NavMeshQuery::getPath(dtNode* endNode, unsigned int* polyPath,int maxPathCount, int& pathCount) {
@@ -246,6 +371,7 @@ namespace NavMesh_RunTime {
 				neighbourNode->cost = cost;
 				neighbourNode->total = total;
 				neighbourNode->hops = bestNode->hops + 1;
+				neighbourNode->conn = idx;
 
 
 
@@ -268,13 +394,29 @@ namespace NavMesh_RunTime {
 		//get path
 
 		 ret |= getPath(lastNode, polyPath, maxPath, pathCount);
+		 //const int maxPathPoint = 2048;
+		 //Vec3 pathPoints[maxPathPoint];
+		 //int pointCount = 0;
+		 if (pathCount > 1) {
+			getPathPoint(sp, ep, lastNode, _pathPoint, MaxPathPoint,  _pathCount);
+		 }
+		 else {
+			 _pathCount = 2;
+			 _pathPoint[0] = ep;
+			 _pathPoint[1] = sp;
 
+		 }
 
 
 		 return ret;
 
 
 	}
+
+	dtStatus NavMeshQuery::findPathPoint(Vec3 start, Vec3 end, unsigned int* polyPath, const int pathCount, Vec3* pointPath, const int maxPoint, int& pointCount) {
+		return 0;
+	}
+	
 #pragma endregion
 
 

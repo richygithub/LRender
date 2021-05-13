@@ -434,58 +434,40 @@ void Tile::buildContour() {
 
 	}
 }
+void Tile::removeHoles() {
 
-
-void Tile::buildPolyMesh(bool removeHole) {
-
-	if (simpleCountours.size() <= 0)
+	if (simpleCountours.size() <= 1)
 		return;
-	//std::vector<glm::vec3 > verts;
-	verts.clear();
-	for (auto& contour : simpleCountours) {
-		verts.insert(verts.end(), contour.begin(), contour.end());
-	}
-	//
-	//Delaunay2d_t del(verts);
-
-	del.clear();
-	
-
-	del.verts.reserve(verts.size());
-	for (int idx = 0; idx < verts.size(); idx++) {
-		del.verts.push_back(DCEL::Vertex(idx, -1, verts[idx]));
-	}
-
-	delaunay2d(verts, del);
-	vector<int> map = vector<int>(del.verts.size(),-1);
-	for (int idx = 0; idx < del.verts.size(); idx++) {
-		map[ del.verts[idx].idx ] = idx;
-	}
-
-	vector<int> outline;
 	int count = simpleCountours[0].size();
-	for (int idx = 0; idx < count; idx++) {
-		outline.push_back(map[idx]);
+	vector<int> map = vector<int>(del.verts.size(), -1);
+	for (int idx = 0; idx < del.verts.size(); idx++) {
+		map[del.verts[idx].idx] = idx;
 	}
-	addOutline(outline, del);
+	for (int num = 1; num < simpleCountours.size(); num++) {
+		vector<int> holes;
 
-
-
-	
-	if (removeHole) {
-		for (int num = 1; num < simpleCountours.size(); num++) {
-			vector<int> holes;
-
+		if (simpleCountours[num].size() > 2) {
 			for (int idx = 0; idx < simpleCountours[num].size(); idx++) {
 				holes.push_back(map[idx + count]);
 			}
-			count += simpleCountours[num].size();
-			removeHoles(holes, del);
+			removeHole(holes, del);
 		}
+
+		count += simpleCountours[num].size();
 	}
 
 
+
+
+}
+void Tile::connectPoly() {
+	//for (auto& e : del.edges) {
+	//	e.face = DCEL::INIT;
+	//}
+	//del.faces.clear();
+
 	tris = traveral_delaunay(verts, del.edges, del.faces);
+
 
 	if (polys != nullptr) {
 		delete[] polys;
@@ -514,15 +496,15 @@ void Tile::buildPolyMesh(bool removeHole) {
 			polys[idx].conn[count] = NavMesh_RunTime::encodePolyId(id, fid);
 
 			if (fid == DCEL::OUTSIDE) {
-				auto sp = verts[ e.orig];
+				auto sp = verts[e.orig];
 				auto ep = verts[edges[e.twin].orig];
 				if ((int)sp.x == 0 && (int)ep.x == 0) {
 					links[0].push_back({ e.id, count });
 				}
-				else if ((int)sp.x == size && (int)ep.x == size ) {
+				else if ((int)sp.x == size && (int)ep.x == size) {
 					links[2].push_back({ e.id,count });
 				}
-				else if ((int)sp.z == 0 && (int)ep.z == 0 ) {
+				else if ((int)sp.z == 0 && (int)ep.z == 0) {
 					links[3].push_back({ e.id,count });
 				}
 				else if ((int)sp.z == size && (int)ep.z == size) {
@@ -533,17 +515,72 @@ void Tile::buildPolyMesh(bool removeHole) {
 			}
 
 			if (fid == DCEL::INNER_HOLE) {
-				polys[idx].conn[count] = NavMesh_RunTime::INVALID_ID;	
+				polys[idx].conn[count] = NavMesh_RunTime::INVALID_ID;
 			}
 
 
-			count+=1;
+			count += 1;
 			//int next = edges[ edges[f.inc].twin].prev ;
 			e = edges[edges[e.twin].prev];
-		} while (e.id != sid );
+		} while (e.id != sid);
+
+	}
+}
+void Tile::addOutlines(){
+	vector<int> map = vector<int>(del.verts.size(), -1);
+	for (int idx = 0; idx < del.verts.size(); idx++) {
+		map[del.verts[idx].idx] = idx;
+	}
+
+	vector<int> outline;
+	int count = simpleCountours[0].size();
+	for (int idx = 0; idx < count; idx++) {
+		outline.push_back(map[idx]);
+	}
+	addOutline(outline, del);
+
+
+	//for (auto& e : del.edges) {
+	//	e.face = DCEL::INIT;
+	//}
+	//del.faces.clear();
+	//tris = traveral_delaunay(verts, del.edges, del.faces);
+
+
+}
+void Tile::buildPolyMesh(bool removeHole) {
+
+	if (simpleCountours.size() <= 0)
+		return;
+	//std::vector<glm::vec3 > verts;
+
+	for (auto it = simpleCountours.begin(); it != simpleCountours.end();) {
+		if (it->size() <= 2) {
+			it = simpleCountours.erase(it);
+		}
+		else {
+			it++;
+		}
 
 	}
 
+	verts.clear();
+	for (auto& contour : simpleCountours) {
+		verts.insert(verts.end(), contour.begin(), contour.end());
+	}
+	//
+	//Delaunay2d_t del(verts);
+
+	del.clear();
+	
+
+	del.verts.reserve(verts.size());
+	for (int idx = 0; idx < verts.size(); idx++) {
+		del.verts.push_back(DCEL::Vertex(idx, -1, verts[idx]));
+	}
+
+	delaunay2d(verts, del);
+	//tris = traveral_delaunay(verts, del.edges, del.faces);
 
 }
 
@@ -793,9 +830,119 @@ void updateBlockStatus(Cell*cells,int size ,int x,int y,int conn) {
 
 
 }
-void Tile::calcBorder() {
+struct TmpNode {
+	int x;
+	int y;
+};
+void Tile::removeSmallBlock(int minBlock) {
+
+	for (auto& it : areaLists) {
+		if (areaBlockNum[it.first] <= minBlock) {
+			for (auto idx : it.second) {
+				cells[idx].block = 0;
+				cells[idx].area = 0;
+			}
+		}
+	}
+}
+	
+void Tile::calcArea() {
 	if (cells == nullptr)
 		return;
+
+	int blockAreaId = 0;
+	int areaId = 0 ;
+
+	//for (int y = 0; y < size; y++) {
+	//	for (int x = 0; x < size; x++) {
+	//		int cidx = x + y * size;
+	//		//remove small areaid
+	//		if (cells[cidx].block == 0 && cells[cidx].area == 0) {
+	//			stack<TmpNode> areas;
+
+	//			areaId++;
+	//			int cellCount = 0;
+	//			areas.push(TmpNode{ x,y });
+	//			vector<int> list;
+
+	//			while (areas.size() > 0) {
+	//				auto block = areas.top();
+	//				areas.pop();
+	//				int idx = block.x + block.y * size;
+	//				list.push_back(idx);
+	//				cells[idx].area = areaId;
+	//				cellCount++;
+
+	//				for (int dir = 0; dir < 4; dir++) {
+	//					int nx = block.x + offset_x[dir];
+	//					int ny = block.y + offset_y[dir];
+
+	//					if (nx >= 0 && nx < size && ny >= 0 && ny < size &&
+	//						cells[nx + ny * size].block == 0 &&
+	//						cells[nx + ny * size].area == 0) {
+	//						areas.push(TmpNode{ nx,ny });
+	//					}
+	//				}
+	//			}
+	//			if (cellCount < 20) {
+	//				for (auto idx : list) {
+	//					cells[idx].block = 1;
+	//					cells[idx].area  = 0;
+	//				}
+	//			}
+	//		}
+
+	//	}
+	//}
+
+
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			int cidx = x + y * size;
+			//remove small areaid
+
+
+			if (cells[cidx].block == 1 && cells[cidx].area == 0) {
+				blockAreaId++;
+				stack<TmpNode> blocks;
+				int blockCount = 0;
+				blocks.push(TmpNode{ x,y });
+				vector<int> list;
+
+				while (blocks.size() > 0) {
+					auto block = blocks.top();
+					blocks.pop();
+					int idx= block.x + block.y * size;
+					list.push_back(idx);
+					cells[idx].area = blockAreaId;
+					blockCount++;
+
+					for (int dir = 0; dir < 4; dir++) {
+						int nx = block.x + offset_x[dir];
+						int ny = block.y + offset_y[dir];
+
+						if (nx >= 0 && nx < size && ny >= 0 && ny < size &&
+							cells[nx + ny * size].block == 1 &&
+							cells[nx + ny * size].area == 0) {
+							blocks.push(TmpNode{nx,ny});
+						}
+					}
+
+				}
+				areaLists.insert(make_pair(blockAreaId,list));
+				areaBlockNum.insert(make_pair(blockAreaId,blockCount));
+			}
+		}
+	}
+
+
+}
+void Tile::calcBorder(int minBlock) {
+	if (cells == nullptr)
+		return;
+	calcArea();
+	removeSmallBlock(minBlock);
+
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
 			int cidx = x + y * size;

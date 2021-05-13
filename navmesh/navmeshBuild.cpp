@@ -219,7 +219,23 @@ void NavmeshBuilder::setCellBlock(float x, float y) {
 	tile.setCell(ix, iy);
 	
 }
+void NavmeshBuilder::clearGround() {
+	_max = vec3(-FLT_MAX,-FLT_MAX,-FLT_MAX);
+	_min = vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+}
+void NavmeshBuilder::addGround(const std::vector<glm::vec3>& verts) {
+	for (auto& vert : verts) {
+		for (int idx = 0; idx < 3; idx++) {
+			if (vert[idx] > _max[idx]) {
+				_max[idx] = vert[idx];
+			}
+			else if (vert[idx] < _min[idx]) {
+				_min[idx] = vert[idx];
+			}
+		}
+	}
 
+}
 void NavmeshBuilder::setPlane(const std::vector<glm::vec3>& verts) {
 	_planes = verts;
 	_max = _planes[0];
@@ -380,17 +396,44 @@ void NavmeshBuilder::build(	Cfg cfg) {
 	for (int x = 0; x < _width; x++) {
 		for (int y = 0; y < _height; y++) {
 			int idx = y * _width + x;
-			_tiles[idx].calcDistField();
-			_tiles[idx].calcBorder();
+			//_tiles[idx].calcDistField();
+			_tiles[idx].calcBorder(cfg.minBlock);
 			//_tiles[idx].buildRegion();
 			_tiles[idx].buildContour();
 			_tiles[idx].simplifyContour(cfg.lineError);
 
-			_tiles[idx].buildPolyMesh(cfg.removeHoles);
+			//_tiles[idx].buildPolyMesh(cfg.removeHoles);
 		}
 	}
 
-	//linkTile
+
+
+
+}
+
+void NavmeshBuilder::debug_addOutline(Cfg cfg) {
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].addOutlines();
+		}
+	}
+}
+void NavmeshBuilder::debug_removeHole(Cfg cfg) {
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].removeHoles();
+		}
+	}
+
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].connectPoly();
+		}
+	}
+
 	for (int x = 0; x < _width; x++) {
 		for (int y = 0; y < _height; y++) {
 			int idx = y * _width + x;
@@ -399,9 +442,19 @@ void NavmeshBuilder::build(	Cfg cfg) {
 	}
 
 	seralize();
+}
+void NavmeshBuilder::build_Tri(Cfg cfg) {
+	//calc dist field
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].buildPolyMesh(cfg.removeHoles);
+		}
+	}
+
+	//linkTile
 
 }
-
 void connectTile(Tile& src,Tile& dst,int dir) {
 
 	for (auto& se : src.links[dir]) {

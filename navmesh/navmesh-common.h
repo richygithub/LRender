@@ -44,6 +44,8 @@ namespace NavMesh_RunTime {
 	
 	bool inTriangle(Vec3 a,Vec3 b,Vec3 c,Vec3 p);
 
+	bool toLeft2D(Vec3 a, Vec3 b, Vec3 c);
+	bool onLeft2D(Vec3 a, Vec3 b, Vec3 c);
 	/// @}
 	/// @name Miscellanious functions.
 	/// @{

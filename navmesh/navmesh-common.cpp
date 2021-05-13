@@ -10,10 +10,10 @@ namespace NavMesh_RunTime {
 		return (a.x - c.x) * (b.z - c.z) - (a.z - c.z) * (b.x - c.x);
 	}
 
-	static bool toLeft2D(Vec3 a, Vec3 b, Vec3 c) {
+	bool toLeft2D(Vec3 a, Vec3 b, Vec3 c) {
 		return area2D(a, b, c) > 0;
 	}
-	static bool onLeft2D(Vec3 a, Vec3 b, Vec3 c) {
+	bool onLeft2D(Vec3 a, Vec3 b, Vec3 c) {
 		return area2D(a, b, c) >= 0;
 	}
 

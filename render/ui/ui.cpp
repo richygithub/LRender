@@ -30,11 +30,15 @@ void LButtonDown(double x, double y) {
 }
 
 bool bPathFind = false;
+bool bPathPoint = false;
 int pairTurn = 0;
 vector<vec3> clickPos(2);
 const int MaxPolyPath = 2048;
 unsigned int polyPath[MaxPolyPath];
 int polyCount = 0;
+
+int clickTileX = 0;
+int clickTileY = 0;
 void UI::lbuttondown(double xpos, double ypos) {
 	Camera& camera = _scene->getCamera();
 
@@ -51,7 +55,27 @@ void UI::lbuttondown(double xpos, double ypos) {
 
 	//printf("this LButtonDown :");
 	//printf("(%.3f,%.3f,%.3f)-->\n(%.3f,%.3f,%.3f)", xpos, ypos, depth, wpos.x, wpos.y, wpos.z);
+	{
+		NavMesh_RunTime::Vec3 pos = NavMesh_RunTime::Vec3(wpos.x, wpos.y, wpos.z);
+		NavMesh_RunTime::Vec3 realPos;
+	
+		//int x, y;
+		if (wpos.x >= gMeshBuilder._min.x && wpos.x <= gMeshBuilder._max.x &&
+			wpos.z >= gMeshBuilder._min.z && wpos.z <= gMeshBuilder._max.z ) {
+			clickTileX = (wpos.x - gMeshBuilder._min.x) / (gBuildCfg.tileSize * gBuildCfg.cellSize);
+			clickTileY = (wpos.z - gMeshBuilder._min.z) / (gBuildCfg.tileSize * gBuildCfg.cellSize);
+			printf("click tile (%d,%d)", clickTileX, clickTileY);
+
+		}
+
+
+	}
 	if (bPathFind) {
+
+		NavMesh_RunTime::Vec3 pos = NavMesh_RunTime::Vec3(wpos.x,wpos.y,wpos.z);
+		NavMesh_RunTime::Vec3 realPos;
+		if ((gMeshBuilder._rtData->findPoly(pos, realPos)) == NavMesh_RunTime::INVALID_ID)
+			return;
 
 		//gMeshBuilder._query
 		clickPos[pairTurn++] = wpos;
@@ -98,6 +122,7 @@ void showTris(Scene* scene);
 void showLinks(Scene* scene);
 
 void showPath(Scene* scene);
+void showPathPoint(Scene* scene);
 
 void UI::updateCamera() {
 
@@ -129,7 +154,7 @@ void UI::updateCamera() {
 	ImGui::ColorEdit3("clear color", (float*)&camera._clearColor);
 	ImGui::InputFloat3("camera position",(float*)&camera._position);
 	ImGui::InputFloat3("camera lookAt",(float*)&camera._lookAt);
-	ImGui::SliderFloat("speed", &camera._moveSpeed, 1.0f, 10.f);
+	ImGui::SliderFloat("speed", &camera._moveSpeed, 1.0f, 100.f);
 
 	//load
 	if (ImGui::CollapsingHeader("Objects")) {
@@ -144,6 +169,9 @@ void UI::updateCamera() {
 	}
 	if (bPathFind) {
 		showPath(_scene);
+	}
+	if (bPathPoint) {
+		showPathPoint(_scene);
 	}
 
 
@@ -189,6 +217,7 @@ void showObjects(Scene* scene) {
 	if (ImGui::BeginTable("split", 3)) {
 
 		auto objs = scene->getObjs();
+
 		for (auto& it : objs) {
 			int id = it.first;
 			Object& obj = *it.second;
@@ -212,6 +241,11 @@ void showObjects(Scene* scene) {
 					mainPlaneId = select;
 				}
 			}
+
+			if (obj.getName().find("water") == 0) {
+				gMeshBuilder.addGround(obj.getMesh()->getVerts());
+			}
+
 
 			ImGui::PopID();
 
@@ -377,7 +411,23 @@ void showTileRegion(Scene* scene) {
 	scene->renderTris(verts, colors);
 
 }
+void showTileTris(Scene*scene) {
+	if (clickTileY >= 0 && clickTileY < gMeshBuilder._height && clickTileX >= 0 && clickTileX < gMeshBuilder._width) {
+		auto& tile = gMeshBuilder._tiles[clickTileX + clickTileY * gMeshBuilder._width];
+		auto& tris = tile.tris;
+		auto& verts = tile.verts;
+		vector<vec3> points;
+		for (auto& v : verts) {
+			points.push_back(vec3(tile.minx + v.x * tile.cellsize, 0, tile.miny + v.z * tile.cellsize));
+		}
+		if (points.size() > 0) {
+			scene->renderTrisWire(points, tris, GL_LINES, green);
+			scene->renderPoints(points, 3.0f, red);
 
+		}
+
+	 }
+}
 void showTris(Scene* scene) {
 	for (int x = 0; x < gMeshBuilder._width; x++) {
 		for (int y = 0; y < gMeshBuilder._height; y++) {
@@ -390,14 +440,18 @@ void showTris(Scene* scene) {
 				for (auto& v : verts) {
 					points.push_back(vec3(tile.minx + v.x * tile.cellsize, 0, tile.miny + v.z * tile.cellsize));
 				}
-				scene->renderTrisWire(points, tris, GL_LINES, green);
+				if (points.size() > 0) {
+					scene->renderTrisWire(points, tris, GL_LINES, green);
+					scene->renderPoints(points, 3.0f, red);
+
+				}
 			}
 		}
 	}
 
 }
 
-vec3 getPolyCenter(Tile& tile,Poly& poly ) {
+vec3 getPolyCenter(const Tile& tile,const Poly& poly ) {
 	vec3 offset = vec3(tile.minx, 0, tile.miny);
 	vec3 a = tile.verts[ poly.verts[0]] * tile.cellsize + offset;
 	vec3 b = tile.verts[ poly.verts[1]] * tile.cellsize + offset;
@@ -405,6 +459,17 @@ vec3 getPolyCenter(Tile& tile,Poly& poly ) {
 
 	vec3 center = triCenter2D(a, b, c);
 	return center;
+}
+void showPathPoint(Scene* scene) {
+	vector<vec3> path;
+	for (int idx = 0; idx < gMeshBuilder._query._pathCount; idx++) {
+		auto v = gMeshBuilder._query._pathPoint[idx];
+		path.push_back(vec3(v.x, v.y, v.z));
+	}
+	if (path.size() > 0) {
+		scene->renderLines(path, GL_LINE_STRIP, yellow);
+	}
+
 }
 
 void showPath(Scene* scene) {
@@ -430,6 +495,8 @@ void showPath(Scene* scene) {
 		scene->renderTris(verts );
 	}
 	
+
+
 	
 }
 
@@ -448,7 +515,8 @@ void showLinks(Scene* scene) {
 					NavMesh_RunTime::decodePolyId(poly.conn[cidx], pid,tid);
 					if (pid >= 0) {
 						auto& tarTile = gMeshBuilder._tiles[tid];
-						vec3 tarCenter = getPolyCenter(tarTile, tarTile.polys[pid]);
+						auto& tarPoly = tarTile.polys[pid];
+						vec3 tarCenter = getPolyCenter(tarTile, tarPoly);
 						verts.push_back(center);
 						verts.push_back(tarCenter);
 					}
@@ -466,85 +534,171 @@ void showLinks(Scene* scene) {
 }
 
 void showTileRasterize(Scene* scene) {
-	//gMeshBuilder.
-	float cellSize = gMeshBuilder._cellSize;
-	vector<vec3> verts;
-	vector<vec4> colors;
+
+	if (clickTileY >= 0 && clickTileY < gMeshBuilder._height && clickTileX >= 0 && clickTileX < gMeshBuilder._width) {
+		auto& tile = gMeshBuilder._tiles[clickTileX + clickTileY * gMeshBuilder._width];
+		if (tile.cells != nullptr) {
+
+			float cellSize = gMeshBuilder._cellSize;
+			vector<vec3> verts;
+			vector<vec4> colors;
+
+			float offsetX = tile.x * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.x;
+			float offsetY = tile.y * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.z;
 
 
-	for (int x = 0; x < gMeshBuilder._width; x++) {
-		for (int y = 0; y<gMeshBuilder._height; y++) {
-			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
-			if (tile.cells != nullptr) {
-				float offsetX = tile.x * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.x;
-				float offsetY = tile.y * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.z;
+			for (int cx = 0; cx < tile.size; cx++) {
+				for (int cy = 0; cy < tile.size; cy++) {
+					//int idx = cx + cy * tile.size;
+					//if (tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border !=0 ) 
+					//if(tile.cells[cx + cy * tile.size].border != 0)
+					//bool b1 = tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border != 0;
+					//bool b2 = (cx == 0 || cy == 0 || cx == tile.size - 1 || cy == tile.size - 1);
 
-
-				for (int cx = 0; cx < tile.size; cx++) {
-					for (int cy = 0; cy < tile.size; cy++) {
-						//int idx = cx + cy * tile.size;
-						//if (tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border !=0 ) 
-						//if(tile.cells[cx + cy * tile.size].border != 0)
-						//bool b1 = tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border != 0;
-						//bool b2 = (cx == 0 || cy == 0 || cx == tile.size - 1 || cy == tile.size - 1);
-
-						////if(cx==0||cy==0||cx==tile.size-1||cy==tile.size-1)
-						//if (b2 == true && b1 == false) {
-						//	int x = 0;
-						//}
-						vec4 c = blue;
-						auto& cell = tile.cells[cx + cy * tile.size];
-						if (cell.block != 0 && cell.border != 0) {
-							c = yellow;
-						}else if (cell.border != 0)
-						{
-							//auto c = blue;
-						}else if (cell.block != 0) {
-							c = red;
-						}else
-						{
-							continue;
-						}
-							//push
-							float minx = cx * cellSize + offsetX;
-							float miny = cy * cellSize + offsetY;
-							vec3 v0(minx, 0, miny);
-							//auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
-
-							vec3 v1(minx+cellSize, 0, miny);
-							//auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
-
-							vec3 v2(minx+cellSize, 0, miny+cellSize);
-							//auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
-
-							vec3 v3(minx, 0, miny+cellSize);
-							//auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
-							float depth = tile.dist[cx + cy * tile.size]/(float)tile.maxDist;
-							//auto c = vec4(depth , depth, depth, 1);
-							
-							verts.push_back(v0);
-							verts.push_back(v1);
-							verts.push_back(v2);
-
-							verts.push_back(v0);
-							verts.push_back(v2);
-							verts.push_back(v3);
-
-							colors.push_back(c);
-							colors.push_back(c);
-							colors.push_back(c);
-
-							colors.push_back(c);
-							colors.push_back(c);
-							colors.push_back(c);
-
-
+					////if(cx==0||cy==0||cx==tile.size-1||cy==tile.size-1)
+					//if (b2 == true && b1 == false) {
+					//	int x = 0;
+					//}
+					vec4 c = blue;
+					auto& cell = tile.cells[cx + cy * tile.size];
+					if (cell.block != 0 && cell.border != 0) {
+						c = yellow;
 					}
+					else if (cell.border != 0)
+					{
+						//auto c = blue;
+					}
+					else if (cell.block != 0) {
+						c = red;
+					}
+					else
+					{
+						continue;
+					}
+					//push
+					float minx = cx * cellSize + offsetX;
+					float miny = cy * cellSize + offsetY;
+					vec3 v0(minx, 0, miny);
+					//auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
+					vec3 v1(minx + cellSize, 0, miny);
+					//auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
+					vec3 v2(minx + cellSize, 0, miny + cellSize);
+					//auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+
+					vec3 v3(minx, 0, miny + cellSize);
+					//auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+					//float depth = tile.dist[cx + cy * tile.size]/(float)tile.maxDist;
+					//auto c = vec4(depth , depth, depth, 1);
+
+					verts.push_back(v0);
+					verts.push_back(v1);
+					verts.push_back(v2);
+
+					verts.push_back(v0);
+					verts.push_back(v2);
+					verts.push_back(v3);
+
+					colors.push_back(c);
+					colors.push_back(c);
+					colors.push_back(c);
+
+					colors.push_back(c);
+					colors.push_back(c);
+					colors.push_back(c);
+
+
 				}
 			}
+
+
+			scene->renderTris(verts, colors);
+
 		}
+
+
 	}
-	scene->renderTris(verts,colors);
+
+	////gMeshBuilder.
+	//float cellSize = gMeshBuilder._cellSize;
+	//vector<vec3> verts;
+	//vector<vec4> colors;
+
+
+	//for (int x = 0; x < gMeshBuilder._width; x++) {
+	//	for (int y = 0; y<gMeshBuilder._height; y++) {
+	//		auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+	//		if (tile.cells != nullptr) {
+	//			float offsetX = tile.x * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.x;
+	//			float offsetY = tile.y * gMeshBuilder._tileSize * cellSize + gMeshBuilder._min.z;
+
+
+	//			for (int cx = 0; cx < tile.size; cx++) {
+	//				for (int cy = 0; cy < tile.size; cy++) {
+	//					//int idx = cx + cy * tile.size;
+	//					//if (tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border !=0 ) 
+	//					//if(tile.cells[cx + cy * tile.size].border != 0)
+	//					//bool b1 = tile.cells[cx + cy * tile.size].block == 0 && tile.cells[cx + cy * tile.size].border != 0;
+	//					//bool b2 = (cx == 0 || cy == 0 || cx == tile.size - 1 || cy == tile.size - 1);
+
+	//					////if(cx==0||cy==0||cx==tile.size-1||cy==tile.size-1)
+	//					//if (b2 == true && b1 == false) {
+	//					//	int x = 0;
+	//					//}
+	//					vec4 c = blue;
+	//					auto& cell = tile.cells[cx + cy * tile.size];
+	//					if (cell.block != 0 && cell.border != 0) {
+	//						c = yellow;
+	//					}else if (cell.border != 0)
+	//					{
+	//						//auto c = blue;
+	//					}else if (cell.block != 0) {
+	//						c = red;
+	//					}else
+	//					{
+	//						continue;
+	//					}
+	//						//push
+	//						float minx = cx * cellSize + offsetX;
+	//						float miny = cy * cellSize + offsetY;
+	//						vec3 v0(minx, 0, miny);
+	//						//auto c0 = vec4(cx/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
+	//						vec3 v1(minx+cellSize, 0, miny);
+	//						//auto c1 = vec4((cx+1)/(float)tile.size,cy/(float)tile.size,1.0,1.0);
+
+	//						vec3 v2(minx+cellSize, 0, miny+cellSize);
+	//						//auto c2 = vec4((cx+1)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+
+	//						vec3 v3(minx, 0, miny+cellSize);
+	//						//auto c3 = vec4((cx)/(float)tile.size,(cy+1)/(float)tile.size,1.0,1.0);
+	//						//float depth = tile.dist[cx + cy * tile.size]/(float)tile.maxDist;
+	//						//auto c = vec4(depth , depth, depth, 1);
+	//						
+	//						verts.push_back(v0);
+	//						verts.push_back(v1);
+	//						verts.push_back(v2);
+
+	//						verts.push_back(v0);
+	//						verts.push_back(v2);
+	//						verts.push_back(v3);
+
+	//						colors.push_back(c);
+	//						colors.push_back(c);
+	//						colors.push_back(c);
+
+	//						colors.push_back(c);
+	//						colors.push_back(c);
+	//						colors.push_back(c);
+
+
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	//scene->renderTris(verts,colors);
 }
 
 void showTileContour(Scene* scene) {
@@ -582,10 +736,28 @@ void showNavmesh(Scene*scene) {
 
 	}
 	*/
-	if (ImGui::SliderFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2)) {
+	ImGui::InputFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2);
 
-	}
+
+	//if (ImGui::SliderFloat("CellSize", &gBuildCfg.cellSize, 0.1, 2)) {
+
+	//}
+
+	ImGui::InputInt("minBlock", &gBuildCfg.minBlock);
+
+
 	ImGui::SliderInt("Line Error", &gBuildCfg.lineError, 0, 10);
+
+
+
+
+	int cellX = ceil( (gMeshBuilder._max.x - gMeshBuilder._min.x) / gBuildCfg.cellSize) ;
+	int cellZ = ceil( (gMeshBuilder._max.z - gMeshBuilder._min.z) / gBuildCfg.cellSize) ;
+
+	int TileX = ceil( cellX / gBuildCfg.tileSize );
+	int TileZ = ceil( cellZ / gBuildCfg.tileSize );
+
+	ImGui::Text("Tile: %d X %d",TileX,TileZ);
 	//std::vector<glm::vec3> quads;
 	////quads.push_back(vec3(6.6, 0.2, 0));
 	////quads.push_back(vec3(3.6, 0.2, 0));
@@ -603,6 +775,17 @@ void showNavmesh(Scene*scene) {
 
 	ImGui::Checkbox("remove holes",&gBuildCfg.removeHoles);
 
+	if (ImGui::Button("SetGround")) {
+		gMeshBuilder.clearGround();
+		auto objs = scene->getObjs();
+		for (auto& it : objs) {
+			Object& obj = *it.second;
+			if (obj.getName().find("water") == 0) {
+				gMeshBuilder.addGround(obj.getMesh()->getVerts());
+			}
+		}
+
+	}
 
 
 	if (ImGui::Button("build")) {
@@ -649,6 +832,23 @@ void showNavmesh(Scene*scene) {
 		//	scene->addMesh(v);
 		//}
 	}
+	if (ImGui::Button("Tri")) {
+		gMeshBuilder.build_Tri(gBuildCfg);
+	}
+
+	if (ImGui::Button("add outline")) {
+		gMeshBuilder.debug_addOutline(gBuildCfg);
+	}
+
+	if (ImGui::Button("rm holes")) {
+		gMeshBuilder.debug_removeHole(gBuildCfg);
+	}
+
+
+	if (ImGui::Button("Save")) {
+		gMeshBuilder.seralize();
+	}
+
 	static bool showRegion;
 	ImGui::Checkbox("show region", &showRegion);
 
@@ -670,6 +870,15 @@ void showNavmesh(Scene*scene) {
 		showTileContour(scene);
 	}
 
+	static bool bshowTileTris;
+	ImGui::Checkbox("show tile tris", &bshowTileTris);
+
+	if (bshowTileTris) {
+		showTileTris(scene);
+	}
+
+
+
 	static bool bshowTris;
 	ImGui::Checkbox("show tris", &bshowTris);
 
@@ -685,6 +894,9 @@ void showNavmesh(Scene*scene) {
 	}
 
 	ImGui::Checkbox("path find", &bPathFind);
+
+	ImGui::Checkbox("path point", &bPathPoint);
+
 
 
 	

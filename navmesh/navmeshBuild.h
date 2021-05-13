@@ -17,7 +17,8 @@ struct Cfg {
 	float gridSize;
 	int lineError;
 	bool removeHoles;
-	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true){}
+	int minBlock;
+	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true), minBlock(4){}
 };
 extern Cfg gBuildCfg;
 struct NavmeshBuilder {
@@ -35,11 +36,21 @@ struct NavmeshBuilder {
 
 	std::vector<glm::vec3>  rasterize(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& tris, float y);
 	void build(Cfg cfg );
+	void build_Tri(Cfg cfg );
+	void debug_addOutline(Cfg cfg );
+	void debug_removeHole(Cfg cfg );
+
+
+
+
 
 	NavmeshBuilder();
 	~NavmeshBuilder();
 
 	void setPlane(const std::vector<glm::vec3>& verts);
+
+	void clearGround();
+	void addGround(const std::vector<glm::vec3>& verts);
 
 	inline void addObj(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& tris) { 
 		_objVerts.push_back(verts); 
