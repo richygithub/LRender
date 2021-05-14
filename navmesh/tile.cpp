@@ -142,7 +142,7 @@ uint16_t* boxBlur(Cell*cells,uint16_t*dist,int size){
 
 }
 
-void Tile::calcDistField() {
+void Tile::calcDistField(int agentRadius) {
 	if (cells == nullptr)
 		return;
 	dist = new uint16_t[size*size];
@@ -154,10 +154,12 @@ void Tile::calcDistField() {
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
 			int idx = x + y * size;
-			if (cells[idx].block == 1)
-				continue;
-			if (x == 0 || y == 0 || x == size - 1 || y == size - 1) {
+			if (cells[idx].block == 1) {
 				dist[idx] = 0;
+				continue;
+			}
+			if (x == 0 || y == 0 || x == size - 1 || y == size - 1) {
+				dist[idx] = agentRadius;
 			}
 			else {
 				for (int dir = 0; dir < 4; dir++) {
@@ -261,9 +263,17 @@ void Tile::calcDistField() {
 		}
 	}
 
-	uint16_t* ndist = boxBlur(cells, dist, size);
-	delete[]dist;
-	dist = ndist;
+	for (int idx = 0; idx < size * size; idx++) {
+		if (dist[idx] < agentRadius) {
+			cells[idx].block = 1;
+		}
+	}
+
+
+	//uint16_t* ndist = boxBlur(cells, dist, size);
+	//delete[]dist;
+	//dist = ndist;
+
 }
 
 struct Element {

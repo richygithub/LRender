@@ -396,7 +396,7 @@ void NavmeshBuilder::build(	Cfg cfg) {
 	for (int x = 0; x < _width; x++) {
 		for (int y = 0; y < _height; y++) {
 			int idx = y * _width + x;
-			//_tiles[idx].calcDistField();
+			_tiles[idx].calcDistField(cfg.agentRadius);
 			_tiles[idx].calcBorder(cfg.minBlock);
 			//_tiles[idx].buildRegion();
 			_tiles[idx].buildContour();

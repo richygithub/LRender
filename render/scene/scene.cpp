@@ -71,8 +71,8 @@ void Scene::init() {
 	//Object* obj = new Object(mesh,new Material("st") );
 	//obj->setName("simple triangle");
 	//addObject(obj);
-	std::string objfile = "res/mesh/sea.obj";
-	//std::string objfile = "res/mesh/small sea.obj";
+	//std::string objfile = "res/mesh/sea.obj";
+	std::string objfile = "res/mesh/small sea.obj";
 
 	//std::string objfile = "res/mesh/unitysimple2.obj";
 
@@ -83,8 +83,8 @@ void Scene::init() {
 	}
 
 	//
-	_camera._position = glm::vec3(-1272, 130, 243);
-	_camera._lookAt = glm::vec3(-1273,90,303);
+	//_camera._position = glm::vec3(-1272, 130, 243);
+	//_camera._lookAt = glm::vec3(-1273,90,303);
 
 }
 void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<glm::vec4>& colors) {

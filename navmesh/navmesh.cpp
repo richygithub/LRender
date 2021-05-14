@@ -127,6 +127,33 @@ namespace NavMesh_RunTime {
 
 	}
 
+	Vec3 getEdgeNearPoint(const MeshTile* tile, const MeshPoly* poly, int edgeId,const Vec3& spos,const Vec3& epos) {
+		int p0 = poly->verts[edgeId];
+		int p1 = poly->verts[(edgeId + 1) % PolyVertNum];
+		const Vec3& v0 = tile->_verts[p0];
+		const Vec3& v1 = tile->_verts[p1];
+
+		float t0=0, t1 = 0;
+		if (IntersectSeg2D(v0, v1, spos, epos, t0, t1)) {
+			
+			if (t0 >= 0 && t0 <= 1) {				
+				return v0 + (v1 - v0) * t0;
+			}
+
+		}
+
+		float d1 = dtVdist2D(epos, v0);
+		float d2 = dtVdist2D(epos, v1);
+		if (d1 < d2) {
+			return v0;
+		}
+		else {
+			return v1;
+		}
+		//return (tile->_verts[p0] + tile->_verts[p1]) * 0.5f;
+
+	}
+
 	static void swapVert(Vec3& v0,Vec3& v1) {
 		Vec3 tmp = v0;
 		v0 = v1;
@@ -342,9 +369,13 @@ namespace NavMesh_RunTime {
 
 
 				//If the node is visited the first time, calculate node position.
-				if (neighbourNode->flags == 0) {
-					neighbourNode->pos = getEdgeMidPoint(tile, poly, idx);
-				}
+				//if (neighbourNode->flags == 0) {
+				//	neighbourNode->pos = getEdgeMidPoint(tile, poly, idx);
+				//}
+
+				neighbourNode->pos = getEdgeNearPoint(tile, poly, idx, bestNode->pos, ep);
+
+
 				float cost = 0;
 				float heuristic = 0;
 				if (neighbourId == endPolyId) {

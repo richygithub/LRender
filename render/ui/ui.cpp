@@ -748,6 +748,9 @@ void showNavmesh(Scene*scene) {
 
 	ImGui::SliderInt("Line Error", &gBuildCfg.lineError, 0, 10);
 
+	ImGui::SliderInt("agent radius", &gBuildCfg.agentRadius, 1, 10);
+
+
 
 
 

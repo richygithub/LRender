@@ -79,7 +79,7 @@ struct Tile {
 	Tile() :cells(nullptr), dist(nullptr),region(nullptr),polys(nullptr),polyNum(0), del(verts){};
 
 	~Tile();
-	void calcDistField();
+	void calcDistField(int agentRadius);
 
 	bool isCellConnectedDir(int x,int y,int dir);
 	bool isBoader(int x,int y);

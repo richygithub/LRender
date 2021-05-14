@@ -38,6 +38,9 @@ namespace NavMesh_RunTime {
 	inline Vec3 operator+(const Vec3& v1, const Vec3& v2) {
 		return Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 	}
+	inline Vec3 operator-(const Vec3& v1, const Vec3& v2) {
+		return Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+	}
 	inline Vec3 operator*(const Vec3& v1, float scale) {
 		return Vec3(v1.x*scale, v1.y*scale, v1.z*scale);
 	}
@@ -69,7 +72,23 @@ namespace NavMesh_RunTime {
 		const float dz = v2.z - v1.z;
 		return sqrtf(dx * dx + dz * dz);
 	}
+	inline float cross2D(const Vec3& a, const Vec3& b) {
+		return a.x * b.z - a.z * b.x;
+	}
 
+
+	inline bool IntersectSeg2D(const Vec3& a1, const Vec3& a2, const Vec3& b1, const Vec3& b2, float& t1, float& t2) {
+		Vec3 a = a2 - a1;
+		Vec3 b = b2 - b1;
+		float d = cross2D(a, b);
+		if (d< 1e-6f && d > -1e-6f)
+			return false;
+
+		Vec3 w = b1 - a1;
+		t1 = cross2D(w, b) / d;
+		t2 = cross2D(w, a) / d;
+
+	}
 
 }
 

@@ -18,7 +18,8 @@ struct Cfg {
 	int lineError;
 	bool removeHoles;
 	int minBlock;
-	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true), minBlock(4){}
+	int agentRadius;
+	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true), minBlock(4), agentRadius(1){}
 };
 extern Cfg gBuildCfg;
 struct NavmeshBuilder {
