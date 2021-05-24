@@ -10,6 +10,9 @@ find_package(OpenGL REQUIRED)
 add_subdirectory (external)
 add_subdirectory (geometry)
 add_subdirectory (navmesh)
+add_subdirectory (export)
+
+
 
 
 

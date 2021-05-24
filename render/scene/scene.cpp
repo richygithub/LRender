@@ -7,7 +7,6 @@
 #include "shader\shader.h"
 #include "material\material.h"
 #include "utils\meshLoader.h"
-
 using namespace std;
 using namespace glm;
 
@@ -71,7 +70,12 @@ void Scene::init() {
 	//Object* obj = new Object(mesh,new Material("st") );
 	//obj->setName("simple triangle");
 	//addObject(obj);
+
 	//std::string objfile = "res/mesh/sea.obj";
+	//_camera._position = glm::vec3(-1397, 520, -92);
+	//_camera._lookAt = glm::vec3(-1342,449,-32);
+	//_camera._far = 6000;
+
 	std::string objfile = "res/mesh/small sea.obj";
 
 	//std::string objfile = "res/mesh/unitysimple2.obj";
@@ -83,8 +87,6 @@ void Scene::init() {
 	}
 
 	//
-	//_camera._position = glm::vec3(-1272, 130, 243);
-	//_camera._lookAt = glm::vec3(-1273,90,303);
 
 }
 void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<glm::vec4>& colors) {
@@ -172,7 +174,12 @@ void Scene::renderTrisWire(const std::vector<glm::vec3>& verts, const std::vecto
 
 }
 
-void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<int>& tris) {
+void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<int>& tris, bool wireframe) {
+
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+
 	GLuint programId = Shader::getProgram("tris");
 	glUseProgram(programId);
 	GLuint MatrixId = glGetUniformLocation(programId, "MVP");
@@ -231,6 +238,11 @@ void Scene::renderTris(const std::vector<glm::vec3>& verts, const std::vector<in
 
 	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);
+
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
 
 }
 
@@ -606,6 +618,7 @@ void Scene::update() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+
 
 	for (auto& obj : _objects) {
 		if (obj.second->visiable) {

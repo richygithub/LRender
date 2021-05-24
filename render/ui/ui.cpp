@@ -19,10 +19,12 @@
 #include "input\input.h"
 #include "navmesh\navmesh.h"
 #include <algorithm>
+#include <fstream>
+#include <chrono>
 
 using namespace glm;
 using namespace std;
-
+using namespace chrono;
 
 void LButtonDown(double x, double y) {
 
@@ -37,8 +39,16 @@ const int MaxPolyPath = 2048;
 unsigned int polyPath[MaxPolyPath];
 int polyCount = 0;
 
+const int MaxPointPath = 32;
+NavMesh_RunTime::Vec3 pointPath[MaxPointPath];
+int pointPathCount = 0;
+
+
 int clickTileX = 0;
 int clickTileY = 0;
+
+NavmeshBuilder gMeshBuilder;
+Cfg gBuildCfg;
 void UI::lbuttondown(double xpos, double ypos) {
 	Camera& camera = _scene->getCamera();
 
@@ -74,7 +84,7 @@ void UI::lbuttondown(double xpos, double ypos) {
 
 		NavMesh_RunTime::Vec3 pos = NavMesh_RunTime::Vec3(wpos.x,wpos.y,wpos.z);
 		NavMesh_RunTime::Vec3 realPos;
-		if ((gMeshBuilder._rtData->findPoly(pos, realPos)) == NavMesh_RunTime::INVALID_ID)
+		if (gMeshBuilder._rtData == nullptr || (gMeshBuilder._rtData->findPoly(pos, realPos)) == NavMesh_RunTime::INVALID_ID)
 			return;
 
 		//gMeshBuilder._query
@@ -83,13 +93,23 @@ void UI::lbuttondown(double xpos, double ypos) {
 		if (pairTurn == 2) {
 			pairTurn = 0;
 
+
+			auto start = system_clock::now();
+
 			ret =gMeshBuilder._query.findPath(NavMesh_RunTime::Vec3(clickPos[0].x, clickPos[0].y, clickPos[0].z),
 				NavMesh_RunTime::Vec3(clickPos[1].x, clickPos[1].y, clickPos[1].z),
+				pointPath,
+				MaxPointPath,
+				pointPathCount,
 				polyPath,
 				MaxPolyPath,
-				polyCount
+				&polyCount
 				);
 
+			auto end = system_clock::now();
+			auto duration = duration_cast<microseconds>(end - start);
+			double t = double(duration.count()) * microseconds::period::num / microseconds::period::den;
+			printf("cost %f ms\n",t*1000);
 
 		}
 
@@ -155,6 +175,7 @@ void UI::updateCamera() {
 	ImGui::InputFloat3("camera position",(float*)&camera._position);
 	ImGui::InputFloat3("camera lookAt",(float*)&camera._lookAt);
 	ImGui::SliderFloat("speed", &camera._moveSpeed, 1.0f, 100.f);
+	ImGui::InputFloat("far plane", &camera._far);
 
 	//load
 	if (ImGui::CollapsingHeader("Objects")) {
@@ -429,6 +450,12 @@ void showTileTris(Scene*scene) {
 	 }
 }
 void showTris(Scene* scene) {
+
+	if (gMeshBuilder.debug_allTris.size() > 0) {
+
+		scene->renderTris(gMeshBuilder.debug_allVerts,gMeshBuilder.debug_allTris,true);
+	}
+	return;
 	for (int x = 0; x < gMeshBuilder._width; x++) {
 		for (int y = 0; y < gMeshBuilder._height; y++) {
 			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
@@ -462,8 +489,8 @@ vec3 getPolyCenter(const Tile& tile,const Poly& poly ) {
 }
 void showPathPoint(Scene* scene) {
 	vector<vec3> path;
-	for (int idx = 0; idx < gMeshBuilder._query._pathCount; idx++) {
-		auto v = gMeshBuilder._query._pathPoint[idx];
+	for (int idx = 0; idx < pointPathCount; idx++) {
+		auto v = pointPath[idx];
 		path.push_back(vec3(v.x, v.y, v.z));
 	}
 	if (path.size() > 0) {
@@ -847,10 +874,54 @@ void showNavmesh(Scene*scene) {
 		gMeshBuilder.debug_removeHole(gBuildCfg);
 	}
 
+	if (ImGui::Button("Build All")) {
+		gMeshBuilder.clearGround();
+		gMeshBuilder.clearObj();
+		for (auto it : scene->getObjs()) {
+			Object& obj = *it.second;
+			if (obj.getName().find("water") == 0) {
+				gMeshBuilder.addGround(obj.getMesh()->getVerts());
+			}
+			else {
 
-	if (ImGui::Button("Save")) {
-		gMeshBuilder.seralize();
+				auto mesh =obj.getMesh();
+				if (obj.visiable)
+					gMeshBuilder.addObj(mesh->getVerts(), mesh->getTris());
+
+			}
+
+		}
+		auto start = system_clock::now();
+		gMeshBuilder.buildAll(gBuildCfg);
+		auto end = system_clock::now();
+		auto duration = duration_cast<microseconds>(end - start);
+		double t = double(duration.count()) * microseconds::period::num / microseconds::period::den;
+		printf("build cost %f ms\n", t * 1000);
+
+		gMeshBuilder.generateTris();
 	}
+
+	static string filepath = "nav.bin";
+	if (ImGui::Button("Save")) {
+		gMeshBuilder.save(filepath);
+	}
+
+	if (ImGui::Button("Load")) {
+		std::ifstream fin(filepath, std::ios_base::binary);
+		fin.seekg(0, std::ios::end);
+		int length = fin.tellg();
+		fin.seekg(0, std::ios::beg);
+
+		char * buffer = new char[length];
+		fin.read(buffer, length);
+		gMeshBuilder.load(buffer, length);
+
+		delete[] buffer;
+
+		fin.close();
+
+	}
+
 
 	static bool showRegion;
 	ImGui::Checkbox("show region", &showRegion);
@@ -981,7 +1052,6 @@ void showGeometri(Scene* scene) {
 	}
 
 
-
 	if (ImGui::Button("triangulation")) {
 		del.clear();
 		tris.clear();
@@ -992,7 +1062,15 @@ void showGeometri(Scene* scene) {
 		for (int idx = 0; idx < rverts.size(); idx++) {
 			del.verts.push_back(DCEL::Vertex(idx, -1,rverts[idx]));
 		}
+
+		auto start = system_clock::now();
 		delaunay2d(rverts,del);
+		auto end = system_clock::now();
+		auto duration = duration_cast<microseconds>(end - start);
+		double t = double(duration.count()) * microseconds::period::num / microseconds::period::den;
+		printf("triangulation cost %f ms\n", t * 1000);
+
+
 		tris = traveral_delaunay(rverts, del.edges, del.faces);
 
 		for (auto& vert : del.verts) {

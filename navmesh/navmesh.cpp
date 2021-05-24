@@ -5,6 +5,7 @@
  * @Description: 
  */
 
+#include <string.h>
 #include "DetourNode.h"
 #include "navmesh.h"
 
@@ -38,9 +39,11 @@ namespace NavMesh_RunTime {
 	MeshTile::~MeshTile() {
 		if (_verts != nullptr) {
 			delete[] _verts;
+			_verts = nullptr;
 		}
 		if (_polys != nullptr) {
 			delete[] _polys;
+			_polys = nullptr;
 		}
 	}
 #pragma endregion
@@ -69,6 +72,63 @@ namespace NavMesh_RunTime {
 		
 
 	}
+	void NavMesh::load(const char* bytes, int len) {
+		int offset = 0;
+		memcpy(&_cellSize, bytes + offset, sizeof(_cellSize));
+		offset += sizeof(_cellSize);
+
+		memcpy(&_tileSize, bytes + offset, sizeof(_tileSize));
+		offset += sizeof(_tileSize);
+
+		memcpy(&_width, bytes + offset, sizeof(_width));
+		offset += sizeof(_width);
+
+		memcpy(&_height, bytes + offset, sizeof(_height));
+		offset += sizeof(_height);
+
+		memcpy(&_min, bytes + offset, sizeof(_min));
+		offset += sizeof(_min);
+
+		memcpy(&_max, bytes + offset, sizeof(_max));
+		offset += sizeof(_max);
+
+
+
+		_width = _width;
+		_height = _height;
+
+		_tiles = new NavMesh_RunTime::MeshTile[_width * _height];
+
+		for (int idx = 0; idx < _width * _height; idx++) {
+
+			auto& mt = _tiles[idx];
+
+			memcpy(&mt._vertNum, bytes + offset, sizeof(mt._vertNum));
+			offset += sizeof(mt._vertNum);
+
+			memcpy(&mt._polyNum, bytes + offset, sizeof(mt._polyNum));
+			offset += sizeof(mt._polyNum);
+
+
+			if (mt._vertNum > 0) {
+				mt._verts = new NavMesh_RunTime::Vec3[mt._vertNum];
+				for (int count = 0; count < mt._vertNum; count++) {
+					//out.write((char*)&mt._verts[count], sizeof(NavMesh_RunTime::Vec3));
+					memcpy((char*)&mt._verts[count], bytes + offset, sizeof(NavMesh_RunTime::Vec3));
+					offset += sizeof(NavMesh_RunTime::Vec3);
+				}
+			}
+			if (mt._polyNum > 0) {
+				mt._polys = new NavMesh_RunTime::MeshPoly[mt._polyNum];
+				for (int count = 0; count < mt._polyNum; count++) {
+					//out.write((char*)&mt._polys[count], sizeof(NavMesh_RunTime::MeshPoly));
+					memcpy((char*)&mt._polys[count], bytes + offset, sizeof(NavMesh_RunTime::MeshPoly));
+					offset += sizeof(NavMesh_RunTime::MeshPoly);
+				}
+			}
+		}
+
+	}
 	bool NavMesh::extractPolyTile(int polyId,const MeshTile** tile,const MeshPoly** poly)const {
 		short pid, tid;
 		decodePolyId(polyId, pid, tid);
@@ -85,7 +145,17 @@ namespace NavMesh_RunTime {
 
 #pragma region NavMeshQuery
 	NavMeshQuery::~NavMeshQuery() {
-
+		if (_nodePool != nullptr) {
+			//_nodePool->~dtNodePool();
+			delete(_nodePool);
+			_nodePool = nullptr;
+		}
+		if (_openList != nullptr)
+		{
+			//_openList->~dtNodeQueue();
+			delete(_openList);
+			_openList = nullptr;
+		}
 	}
 
 	void NavMeshQuery::init(const NavMesh* pdata, const int maxNodes) {
@@ -142,8 +212,8 @@ namespace NavMesh_RunTime {
 
 		}
 
-		float d1 = dtVdist2D(epos, v0);
-		float d2 = dtVdist2D(epos, v1);
+		float d1 = dtVdistSquare2D(epos, v0);
+		float d2 = dtVdistSquare2D(epos, v1);
 		if (d1 < d2) {
 			return v0;
 		}
@@ -269,8 +339,13 @@ namespace NavMesh_RunTime {
 
 		}
 
-		pointPath[pCount++] = start;
-		pointCount = pCount;
+		if (pCount == maxPoint) {
+			s |= DT_PARTIAL_RESULT;
+		}
+		else {
+			pointPath[pCount++] = start;
+			pointCount = pCount;
+		}
 
 		return s;
 
@@ -293,19 +368,23 @@ namespace NavMesh_RunTime {
 		pathCount = count;
 		return s;
 	}
-	dtStatus NavMeshQuery::findPath(Vec3 start, Vec3 end,unsigned int* polyPath,int maxPath,int& pathCount) {
+	dtStatus NavMeshQuery::findPath(Vec3 start, Vec3 end, Vec3* pointPath, const int maxPoint, int& pointCount, unsigned int* polyPath, int maxPathCount, int* pathCount) {
+		pointCount = 0;
+		if (_meshData == nullptr) {
+			return DT_FAILURE;
+		}
 		Vec3 sp, ep;
 		int startPolyId, endPolyId;
 		if ((startPolyId = _meshData->findPoly(start, sp)) == INVALID_ID)
-			return 0;
+			return DT_INVALID_POSIITON;
 
 		if ((endPolyId = _meshData->findPoly(end, ep)) == INVALID_ID)
-			return 0;
+			return DT_INVALID_POSIITON;
 		//
 		const MeshTile* startTile, endTile;
 		const MeshPoly* startPoly, endPoly;
 		if (!_meshData->extractPolyTile(startPolyId, &startTile, &startPoly) ){
-			return 0;	
+			return DT_INVALID_POSIITON;
 		}
 		//A*
 		_nodePool->clear();
@@ -424,30 +503,29 @@ namespace NavMesh_RunTime {
 		}
 		//get path
 
-		 ret |= getPath(lastNode, polyPath, maxPath, pathCount);
+		//for debug
+		if (polyPath != nullptr && pathCount != nullptr) {
+			getPath(lastNode, polyPath, maxPathCount, *pathCount);
+		}
 		 //const int maxPathPoint = 2048;
 		 //Vec3 pathPoints[maxPathPoint];
 		 //int pointCount = 0;
-		 if (pathCount > 1) {
-			getPathPoint(sp, ep, lastNode, _pathPoint, MaxPathPoint,  _pathCount);
-		 }
-		 else {
-			 _pathCount = 2;
-			 _pathPoint[0] = ep;
-			 _pathPoint[1] = sp;
 
-		 }
-
-
-		 return ret;
-
+		if (lastNode == stNode) {
+			pointCount = 2;
+			pointPath[0] = ep;
+			pointPath[1] = sp;
+		}
+		else {
+			ret |= getPathPoint(sp, ep, lastNode, pointPath, maxPoint, pointCount);
+		}
+		return ret;
 
 	}
 
-	dtStatus NavMeshQuery::findPathPoint(Vec3 start, Vec3 end, unsigned int* polyPath, const int pathCount, Vec3* pointPath, const int maxPoint, int& pointCount) {
-		return 0;
+	dtStatus NavMeshQuery::findPathPoint(Vec3 start, Vec3 end, Vec3* pointPath, const int maxPoint, int& pointCount) {
+		return findPath(start,end, pointPath, maxPoint, pointCount,nullptr,0,nullptr);
 	}
-	
 #pragma endregion
 
 

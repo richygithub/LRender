@@ -68,32 +68,35 @@ namespace NavMesh_RunTime {
 	
 		int findPoly(Vec3 point,Vec3& location)const;
 		bool extractPolyTile(int polyId, const MeshTile** tile, const MeshPoly** poly)const;
+		void load(const char* bytes, int len);
 		NavMesh() :_tiles(nullptr) {};
 		~NavMesh();
 
 
 	};
 
-	const int MaxPathPoint = 1024;
 	struct NavMeshQuery {
 		const NavMesh* _meshData;
 		class dtNodePool* _nodePool;		///< Pointer to node pool.
 		class dtNodeQueue* _openList;		///< Pointer to open list queue.
 
-		NavMeshQuery() :_meshData(nullptr),_nodePool(nullptr),_openList(nullptr), _pathCount(0){}
+		NavMeshQuery() :_meshData(nullptr),_nodePool(nullptr),_openList(nullptr){}
 		~NavMeshQuery();
 		void init(const NavMesh* pdata, const int maxNodes);
 
 		
-		dtStatus findPath(Vec3 start,Vec3 end, unsigned int* polyPath, int maxPath, int& pathCount);
-		dtStatus getPath(struct dtNode* endNode,unsigned int* polyPath, int maxPathCount, int& pathCount );
+		dtStatus findPath(Vec3 start,Vec3 end, Vec3* pointPath, const int maxPoint, int& pointCount,
+			unsigned int* polyPath, int maxPathCount, int* pathCount
+			);
 
-		dtStatus getPathPoint(Vec3 start, Vec3 end, const struct dtNode* endNode, Vec3* pointPath, const int maxPoint, int& pointCount);
 
-		dtStatus findPathPoint(Vec3 start,Vec3 end, unsigned int* polyPath,const int pathCount,Vec3* pointPath,const int maxPoint,int& pointCount);
-		Vec3 _pathPoint[MaxPathPoint];
-		int _pathCount;
+		dtStatus findPathPoint(Vec3 start,Vec3 end,Vec3* pointPath,const int maxPoint,int& pointCount);
+
+
 	private:
+
+		dtStatus getPath(struct dtNode* endNode,unsigned int* polyPath, int maxPathCount, int& pathCount );
+		dtStatus getPathPoint(Vec3 start, Vec3 end, const struct dtNode* endNode, Vec3* pointPath, const int maxPoint, int& pointCount);
 		bool getPortalPoint(const struct dtNode* node,Vec3& left,Vec3& right);
 
 

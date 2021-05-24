@@ -537,6 +537,8 @@ void Tile::connectPoly() {
 	}
 }
 void Tile::addOutlines(){
+	if (simpleCountours.size() <= 0)
+		return;
 	vector<int> map = vector<int>(del.verts.size(), -1);
 	for (int idx = 0; idx < del.verts.size(); idx++) {
 		map[del.verts[idx].idx] = idx;

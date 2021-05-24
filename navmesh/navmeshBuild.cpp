@@ -9,10 +9,10 @@
 #include "navmeshBuild.h"
 #include "tile.h"
 #include "glm\glm.hpp"
+#include <sstream>
+#include <fstream>
 
 
-NavmeshBuilder gMeshBuilder;
-Cfg gBuildCfg;
 
 
 using namespace glm;
@@ -253,33 +253,109 @@ void NavmeshBuilder::setPlane(const std::vector<glm::vec3>& verts) {
 }
 
 void NavmeshBuilder::debug() {
-	for (int x = 0; x < gMeshBuilder._width; x++) {
-		for (int y = 0; y < gMeshBuilder._height; y++) {
-			auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
-			if (tile.cells != nullptr) {
-				printf("----------(%d %d)-----------",x,y);
-				for (int cy = 0; cy < tile.size; cy++) {
-					for (int cx = 0; cx < tile.size; cx++) {
-						if (tile.cells[cx + cy * tile.size].block == 0) {
-								//push
-								//printf("cell (%d,%d) at tile(%d,%d)\n", cx, cy, x, y);
-								printf("%2d ", tile.dist[cx + cy * tile.size]);
-							}
-							else {
-								printf("-1");
-						}
-					}
-					printf("\n");
-				}
-				printf("\n");
-	
+	//for (int x = 0; x < gMeshBuilder._width; x++) {
+	//	for (int y = 0; y < gMeshBuilder._height; y++) {
+	//		auto& tile = gMeshBuilder._tiles[x + y * gMeshBuilder._width];
+	//		if (tile.cells != nullptr) {
+	//			printf("----------(%d %d)-----------",x,y);
+	//			for (int cy = 0; cy < tile.size; cy++) {
+	//				for (int cx = 0; cx < tile.size; cx++) {
+	//					if (tile.cells[cx + cy * tile.size].block == 0) {
+	//							//push
+	//							//printf("cell (%d,%d) at tile(%d,%d)\n", cx, cy, x, y);
+	//							printf("%2d ", tile.dist[cx + cy * tile.size]);
+	//						}
+	//						else {
+	//							printf("-1");
+	//					}
+	//				}
+	//				printf("\n");
+	//			}
+	//			printf("\n");
+	//
+	//		}
+	//	}
+	//}
+
+
+}
+void NavmeshBuilder::save(std::string path) {
+	if (_rtData == nullptr) {
+		return;
+	}
+
+	std::ofstream out(path, std::ios_base::binary);
+	if (!out.good())
+		return;
+
+	out.write((char*)&_rtData->_cellSize, sizeof(_rtData->_cellSize));
+	out.write((char*)&_rtData->_tileSize, sizeof(_rtData->_tileSize));
+	out.write((char*)&_rtData->_width, sizeof(_rtData->_width));
+	out.write((char*)&_rtData->_height, sizeof(_rtData->_height));
+	out.write((char*)&_rtData->_min, sizeof(_rtData->_min));
+	out.write((char*)&_rtData->_max, sizeof(_rtData->_max));
+
+
+	for (int idx = 0; idx < _width * _height; idx++) {
+
+		auto& mt = _rtData->_tiles[idx];
+		out.write((char*)&mt._vertNum, sizeof(mt._vertNum));
+		out.write((char*)&mt._polyNum, sizeof(mt._polyNum));
+
+
+
+		if (mt._vertNum > 0) {
+			for (int count = 0; count < mt._vertNum; count++) {
+				out.write((char*)&mt._verts[count], sizeof(NavMesh_RunTime::Vec3));
+			}
+		}
+		if (mt._polyNum > 0) {
+			for (int count = 0; count < mt._polyNum; count++) {
+				out.write((char*)&mt._polys[count], sizeof(NavMesh_RunTime::MeshPoly));
+			}
+		}
+	}
+	out.close();
+
+}
+void NavmeshBuilder::load(const char* bytes, int len) {
+	if (_rtData != nullptr) {
+		delete _rtData;
+	}
+	_rtData = new NavMesh_RunTime::NavMesh();
+	_rtData->load(bytes, len);
+	_query.init(_rtData, 2048);
+}
+void NavmeshBuilder::addUnityObj(const glm::vec3* verts, int vertNum, const int* tris, int triNum) {
+	std::vector< glm::vec3 > vlist;
+	vlist.reserve(vertNum);
+	for (int idx = 0; idx < vertNum; idx++) {
+		vlist.push_back(verts[idx]);
+	}
+	_objVerts.push_back(vlist);
+
+	std::vector< unsigned int > trilist;
+	trilist.reserve(triNum);
+	for (int idx = 0; idx < triNum; idx++) {
+		trilist.push_back(tris[idx]);
+	}	
+	_objTris.push_back(trilist);
+
+}
+void NavmeshBuilder::addUnityGround(const glm::vec3* verts, int vertNum, const int* tris, int triNum) {
+	for (int vIdx = 0; vIdx < vertNum;vIdx++) {
+		auto& vert = verts[vIdx];
+		for (int idx = 0; idx < 3; idx++) {
+			if (vert[idx] > _max[idx]) {
+				_max[idx] = vert[idx];
+			}
+			else if (vert[idx] < _min[idx]) {
+				_min[idx] = vert[idx];
 			}
 		}
 	}
 
-
 }
-
 void NavmeshBuilder::seralize() {
 
 	if (_rtData != nullptr) {
@@ -331,7 +407,123 @@ void NavmeshBuilder::seralize() {
 
 
 }
+void NavmeshBuilder::generateTris() {
+	
+	debug_allVerts.clear();
+	debug_allTris.clear();
+	int count = 0;
+	if (_rtData != nullptr) {
+		int height = _rtData->_height;
+		int width = _rtData->_width;
+			
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int idx = y * width + x;
+				const auto& mt = _rtData->_tiles[idx];
 
+				for (int vIdx = 0; vIdx < mt._vertNum; vIdx++) {
+					const auto& v = mt._verts[vIdx];
+					debug_allVerts.push_back( glm::vec3(v.x,v.y,v.z) );
+				}
+				for (int pIdx = 0; pIdx < mt._polyNum; pIdx++) {
+					for (int vIdx = 0; vIdx < 3; vIdx++) {
+						debug_allTris.push_back(mt._polys[pIdx].verts[vIdx] + count);
+					}
+				}
+				count += mt._vertNum;
+			}
+		}
+
+	}
+}
+void NavmeshBuilder::buildAll(Cfg cfg) {
+	_tileSize = cfg.tileSize;
+	_cellSize = cfg.cellSize;
+
+
+	if (_tiles != nullptr) {
+		delete[] _tiles;
+	}
+	_width = ceil((_max.x - _min.x) / (_tileSize * _cellSize));
+	_height = ceil((_max.z - _min.z) / (_tileSize * _cellSize));
+
+	_tiles = new Tile[_width * _height];
+
+	for (int y = 0; y < _height; y++) {
+		for (int x = 0; x < _width; x++) {
+
+			int idx = y * _width + x;
+
+			float minx = _min.x + x * _tileSize * _cellSize;
+			float miny = _min.z + y * _tileSize * _cellSize;
+
+
+			_tiles[idx].init(x, y, _tileSize, _cellSize, minx, miny);
+			_tiles[idx].id = idx;
+		}
+	}
+	//ÉèÖÃ±ß½ç
+	for (int y = 0; y < _height; y++) {
+
+		int idx = y * _width + _width - 1;
+		int mx = (_max.x - _min.x) / _cellSize - (_width - 1) * _tileSize;
+
+		for (int cy = 0; cy < _tileSize; cy++) {
+			for (int cx = mx; cx < _tileSize; cx++) {
+				_tiles[idx].setCell(cx, cy);
+			}
+		}
+
+	}
+
+	for (int x = 0; x < _width; x++) {
+
+		int idx = (_height - 1) * _width + x;
+		int my = (_max.z - _min.z) / _cellSize - (_height - 1) * _tileSize;
+
+		for (int cy = my; cy < _tileSize; cy++) {
+			for (int cx = 0; cx < _tileSize; cx++) {
+				_tiles[idx].setCell(cx, cy);
+			}
+		}
+
+	}
+
+
+	_debug.clear();
+	for (int idx = 0; idx < _objVerts.size(); idx++) {
+
+		auto vs = rasterize(_objVerts[idx], _objTris[idx], _max.y);
+		_debug.push_back(vs);
+	}
+	//calc dist field
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			_tiles[idx].calcDistField(cfg.agentRadius);
+			_tiles[idx].calcBorder(cfg.minBlock);
+			//_tiles[idx].buildRegion();
+			_tiles[idx].buildContour();
+			_tiles[idx].simplifyContour(cfg.lineError);
+			_tiles[idx].buildPolyMesh();
+			_tiles[idx].addOutlines();
+			_tiles[idx].removeHoles();
+			_tiles[idx].connectPoly();
+			//_tiles[idx].buildPolyMesh(cfg.removeHoles);
+		}
+	}
+
+	//link tile
+	for (int x = 0; x < _width; x++) {
+		for (int y = 0; y < _height; y++) {
+			int idx = y * _width + x;
+			linkTile(_tiles[idx]);
+		}
+	}
+
+	//
+	seralize();
+}
 void NavmeshBuilder::build(	Cfg cfg) {
 	_tileSize = cfg.tileSize;
 	_cellSize = cfg.cellSize;
@@ -526,8 +718,9 @@ NavmeshBuilder::~NavmeshBuilder() {
 
 }
 
-void NavmeshBuilder::init(Cfg cfg) {
-
+void NavmeshBuilder::clear() {
+	clearGround();
+	clearObj();
 }
 
 

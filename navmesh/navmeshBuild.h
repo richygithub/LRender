@@ -7,9 +7,11 @@
 #pragma once 
 
 #include <vector>
+#include <string>
 #include "glm\glm.hpp"
 #include "tile.h"
 #include "navmesh.h"
+
 
 struct Cfg {
 	int tileSize;
@@ -19,9 +21,8 @@ struct Cfg {
 	bool removeHoles;
 	int minBlock;
 	int agentRadius;
-	Cfg() :tileSize(32), cellSize(0.2), gridSize(0.5),lineError(2), removeHoles(true), minBlock(4), agentRadius(1){}
+	Cfg() :tileSize(128), cellSize(1), gridSize(0.5),lineError(2), removeHoles(true), minBlock(4), agentRadius(1){}
 };
-extern Cfg gBuildCfg;
 struct NavmeshBuilder {
 	Tile* _tiles;
 	int _width;
@@ -32,18 +33,26 @@ struct NavmeshBuilder {
 	glm::vec3 _max;
 	glm::vec3 _min;
 
+	std::vector<glm::vec3> debug_allVerts;
+	std::vector<int> debug_allTris;
 
-	void init(Cfg cfg);
+
+
+	void clear();
 
 	std::vector<glm::vec3>  rasterize(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& tris, float y);
+
+	void buildAll(Cfg cfg );
+	
 	void build(Cfg cfg );
 	void build_Tri(Cfg cfg );
 	void debug_addOutline(Cfg cfg );
 	void debug_removeHole(Cfg cfg );
 
+	void generateTris();
 
-
-
+	void addUnityObj(const glm::vec3* verts,int vertNum, const int* tris,int triNum);
+	void addUnityGround(const glm::vec3* verts, int vertNum, const int* tris, int triNum);
 
 	NavmeshBuilder();
 	~NavmeshBuilder();
@@ -68,6 +77,8 @@ struct NavmeshBuilder {
 
 	void debug();
 	void seralize();
+	void save(std::string path);
+	void load(const char* bytes,int len);
 private:
 
 	std::vector<glm::vec3> _planes;
@@ -83,8 +94,5 @@ private:
 
 	void linkTile(Tile& tile);
 
-
-
 };
-extern NavmeshBuilder gMeshBuilder;
 
